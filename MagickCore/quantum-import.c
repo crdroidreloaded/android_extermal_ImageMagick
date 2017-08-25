@@ -22,13 +22,13 @@
 %                               October 1998                                  %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -2092,7 +2092,7 @@ static void ImportGrayQuantum(const Image *image,QuantumInfo *quantum_info,
           for (x=0; x < (ssize_t) number_pixels; x++)
           {
             p=PushCharPixel(p,&pixel);
-            SetPixelGray(image,ScaleCharToQuantum(pixel),q);
+            SetPixelGray(image,QuantumRange-ScaleCharToQuantum(pixel),q);
             SetPixelAlpha(image,OpaqueAlpha,q);
             p+=quantum_info->pad;
             q+=GetPixelChannels(image);
@@ -4280,7 +4280,7 @@ MagickExport size_t ImportQuantumPixels(const Image *image,
         register ssize_t
           i;
 
-        if (GetPixelReadMask(image,q) == 0)
+        if (GetPixelWriteMask(image,q) == 0)
           {
             q+=GetPixelChannels(image);
             continue;

@@ -79,6 +79,12 @@ $example->Label('Auto Level');
 $example->AutoLevel();
 push(@$images,$example);
 
+print "Auto-threshold...\n";
+$example=$model->Clone();
+$example->Label('Auto Threshold');
+$example->AutoThreshold();
+push(@$images,$example);
+
 print "Blur...\n";
 $example=$model->Clone();
 $example->Label('Blur');
@@ -107,6 +113,12 @@ print "ColorMatrix...\n";
 $example=$model->Clone();
 $example->Label('ColorMatrix');
 $example->ColorMatrix([1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0.5, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1]);
+push(@$images,$example);
+
+print "Colorspace...\n";
+$example=$model->Clone();
+$example->Label('Colorspace');
+$example->Colorspace('Lab');
 push(@$images,$example);
 
 print "Composite...\n";
@@ -483,7 +495,7 @@ push(@$images,$example);
 
 print "WaveletDenoise...\n";
 $example=$model->Clone();
-$example->Label('WaveletDenoise');
+$example->Label('Wavelet Denoise');
 $example->WaveletDenoise('5%');
 push(@$images,$example);
 

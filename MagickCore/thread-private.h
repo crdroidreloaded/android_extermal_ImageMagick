@@ -1,11 +1,11 @@
 /*
-  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization
+  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization
   dedicated to making software imaging solutions freely available.
 
   You may not use this file except in compliance with the License.
   obtain a copy of the License at
 
-    http://www.imagemagick.org/script/license.php
+    https://www.imagemagick.org/script/license.php
 
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,6 +19,7 @@
 #define MAGICKCORE_THREAD_PRIVATE_H
 
 #include "MagickCore/cache.h"
+#include "MagickCore/image-private.h"
 #include "MagickCore/resource_.h"
 #include "MagickCore/thread_.h"
 
@@ -30,14 +31,12 @@ extern "C" {
   Single threaded unless workload justifies the threading overhead.
 */
 #define magick_threads(source,destination,chunk,expression) \
-  num_threads((expression) == 0 ? 1 : \
-    ((chunk) > (32*GetMagickResourceLimit(ThreadResource))) && \
-     ((GetImagePixelCacheType(source) == MemoryCache) || \
-      (GetImagePixelCacheType(source) == MapCache)) && \
-     ((GetImagePixelCacheType(destination) == MemoryCache) || \
-      (GetImagePixelCacheType(destination) == MapCache)) ? \
-      GetMagickResourceLimit(ThreadResource) : \
-      GetMagickResourceLimit(ThreadResource) < 2 ? 1 : 2)
+  num_threads((((expression) != 0) && \
+    ((GetImagePixelCacheType(source) == MemoryCache) || \
+     (GetImagePixelCacheType(source) == MapCache)) && \
+    ((GetImagePixelCacheType(destination) == MemoryCache) || \
+     (GetImagePixelCacheType(destination) == MapCache))) ? \
+    MagickMax(1,MagickMin(GetMagickResourceLimit(ThreadResource),(chunk)/16)) : 1)
 
 #if defined(__clang__) || (__GNUC__ > 3) || ((__GNUC__ == 3) && (__GNUC_MINOR__ > 10))
 #define MagickCachePrefetch(address,mode,locality) \

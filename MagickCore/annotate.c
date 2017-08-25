@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -75,6 +75,7 @@
 #include "MagickCore/string_.h"
 #include "MagickCore/token.h"
 #include "MagickCore/token-private.h"
+#include "MagickCore/transform.h"
 #include "MagickCore/transform-private.h"
 #include "MagickCore/type.h"
 #include "MagickCore/utility.h"
@@ -371,24 +372,22 @@ MagickExport MagickBooleanType AnnotateImage(Image *image,
       {
         offset.x=(geometry.width == 0 ? -1.0 : 1.0)*annotate_info->affine.tx+
           geometry.width/2.0+i*annotate_info->affine.ry*height-
-          annotate_info->affine.sx*(metrics.width+metrics.bounds.x1)/2.0+
-          annotate_info->affine.ry*(metrics.ascent+metrics.descent);
+          annotate_info->affine.sx*metrics.width/2.0+annotate_info->affine.ry*
+          (metrics.ascent+metrics.descent);
         offset.y=(geometry.height == 0 ? -1.0 : 1.0)*annotate_info->affine.ty+i*
           annotate_info->affine.sy*height+annotate_info->affine.sy*
-          metrics.ascent-annotate_info->affine.rx*(metrics.width-
-          metrics.bounds.x1)/2.0;
+          metrics.ascent-annotate_info->affine.rx*metrics.width/2.0;
         break;
       }
       case NorthEastGravity:
       {
         offset.x=(geometry.width == 0 ? 1.0 : -1.0)*annotate_info->affine.tx+
           geometry.width+i*annotate_info->affine.ry*height-
-          annotate_info->affine.sx*(metrics.width+metrics.bounds.x1)+
-          annotate_info->affine.ry*(metrics.ascent+metrics.descent)-1.0;
+          annotate_info->affine.sx*metrics.width+annotate_info->affine.ry*
+          (metrics.ascent+metrics.descent)-1.0;
         offset.y=(geometry.height == 0 ? -1.0 : 1.0)*annotate_info->affine.ty+i*
           annotate_info->affine.sy*height+annotate_info->affine.sy*
-          metrics.ascent-annotate_info->affine.rx*(metrics.width-
-          metrics.bounds.x1);
+          metrics.ascent-annotate_info->affine.rx*metrics.width;
         break;
       }
       case WestGravity:
@@ -406,26 +405,24 @@ MagickExport MagickBooleanType AnnotateImage(Image *image,
       {
         offset.x=(geometry.width == 0 ? -1.0 : 1.0)*annotate_info->affine.tx+
           geometry.width/2.0+i*annotate_info->affine.ry*height-
-          annotate_info->affine.sx*(metrics.width+metrics.bounds.x1)/2.0+
-          annotate_info->affine.ry*(metrics.ascent+metrics.descent-
-          (number_lines-1.0)*height)/2.0;
+          annotate_info->affine.sx*metrics.width/2.0+annotate_info->affine.ry*
+          (metrics.ascent+metrics.descent-(number_lines-1.0)*height)/2.0;
         offset.y=(geometry.height == 0 ? -1.0 : 1.0)*annotate_info->affine.ty+
           geometry.height/2.0+i*annotate_info->affine.sy*height-
-          annotate_info->affine.rx*(metrics.width+metrics.bounds.x1)/2.0+
-          annotate_info->affine.sy*(metrics.ascent+metrics.descent-
-          (number_lines-1.0)*height)/2.0;
+          annotate_info->affine.rx*metrics.width/2.0+annotate_info->affine.sy*
+          (metrics.ascent+metrics.descent-(number_lines-1.0)*height)/2.0;
         break;
       }
       case EastGravity:
       {
         offset.x=(geometry.width == 0 ? 1.0 : -1.0)*annotate_info->affine.tx+
           geometry.width+i*annotate_info->affine.ry*height-
-          annotate_info->affine.sx*(metrics.width+metrics.bounds.x1)+
+          annotate_info->affine.sx*metrics.width+
           annotate_info->affine.ry*(metrics.ascent+metrics.descent-
           (number_lines-1.0)*height)/2.0-1.0;
         offset.y=(geometry.height == 0 ? -1.0 : 1.0)*annotate_info->affine.ty+
           geometry.height/2.0+i*annotate_info->affine.sy*height-
-          annotate_info->affine.rx*(metrics.width+metrics.bounds.x1)+
+          annotate_info->affine.rx*metrics.width+
           annotate_info->affine.sy*(metrics.ascent+metrics.descent-
           (number_lines-1.0)*height)/2.0;
         break;
@@ -444,11 +441,11 @@ MagickExport MagickBooleanType AnnotateImage(Image *image,
       {
         offset.x=(geometry.width == 0 ? -1.0 : 1.0)*annotate_info->affine.tx+
           geometry.width/2.0+i*annotate_info->affine.ry*height-
-          annotate_info->affine.sx*(metrics.width+metrics.bounds.x1)/2.0-
+          annotate_info->affine.sx*metrics.width/2.0-
           annotate_info->affine.ry*(number_lines-1.0)*height/2.0;
         offset.y=(geometry.height == 0 ? 1.0 : -1.0)*annotate_info->affine.ty+
           geometry.height+i*annotate_info->affine.sy*height-
-          annotate_info->affine.rx*(metrics.width+metrics.bounds.x1)/2.0-
+          annotate_info->affine.rx*metrics.width/2.0-
           annotate_info->affine.sy*(number_lines-1.0)*height+metrics.descent;
         break;
       }
@@ -456,11 +453,11 @@ MagickExport MagickBooleanType AnnotateImage(Image *image,
       {
         offset.x=(geometry.width == 0 ? 1.0 : -1.0)*annotate_info->affine.tx+
           geometry.width+i*annotate_info->affine.ry*height-
-          annotate_info->affine.sx*(metrics.width+metrics.bounds.x1)-
+          annotate_info->affine.sx*metrics.width-
           annotate_info->affine.ry*(number_lines-1.0)*height-1.0;
         offset.y=(geometry.height == 0 ? 1.0 : -1.0)*annotate_info->affine.ty+
           geometry.height+i*annotate_info->affine.sy*height-
-          annotate_info->affine.rx*(metrics.width+metrics.bounds.x1)-
+          annotate_info->affine.rx*metrics.width-
           annotate_info->affine.sy*(number_lines-1.0)*height+metrics.descent;
         break;
       }
@@ -476,17 +473,17 @@ MagickExport MagickBooleanType AnnotateImage(Image *image,
       case CenterAlign:
       {
         offset.x=annotate_info->affine.tx+i*annotate_info->affine.ry*height-
-          annotate_info->affine.sx*(metrics.width+metrics.bounds.x1)/2.0;
+          annotate_info->affine.sx*metrics.width/2.0;
         offset.y=annotate_info->affine.ty+i*annotate_info->affine.sy*height-
-          annotate_info->affine.rx*(metrics.width+metrics.bounds.x1)/2.0;
+          annotate_info->affine.rx*metrics.width/2.0;
         break;
       }
       case RightAlign:
       {
         offset.x=annotate_info->affine.tx+i*annotate_info->affine.ry*height-
-          annotate_info->affine.sx*(metrics.width+metrics.bounds.x1);
+          annotate_info->affine.sx*metrics.width;
         offset.y=annotate_info->affine.ty+i*annotate_info->affine.sy*height-
-          annotate_info->affine.rx*(metrics.width+metrics.bounds.x1);
+          annotate_info->affine.rx*metrics.width;
         break;
       }
       default:
@@ -594,9 +591,6 @@ MagickExport ssize_t FormatMagickCaption(Image *image,DrawInfo *draw_info,
   const MagickBooleanType split,TypeMetric *metrics,char **caption,
   ExceptionInfo *exception)
 {
-  char
-    *text;
-
   MagickBooleanType
     digit,
     status;
@@ -616,9 +610,9 @@ MagickExport ssize_t FormatMagickCaption(Image *image,DrawInfo *draw_info,
     n;
 
   digit=MagickFalse;
-  text=AcquireString(draw_info->text);
   q=draw_info->text;
   s=(char *) NULL;
+  width=0;
   for (p=(*caption); GetUTFCode(p) != 0; p+=GetUTFOctets(p))
   {
     if ((digit == MagickFalse) && (IsUTFSpace(GetUTFCode(p)) != MagickFalse))
@@ -634,16 +628,15 @@ MagickExport ssize_t FormatMagickCaption(Image *image,DrawInfo *draw_info,
     if (status == MagickFalse)
       break;
     width=(size_t) floor(metrics->width+draw_info->stroke_width+0.5);
-    if ((width <= image->columns) || (strcmp(text,draw_info->text) == 0))
+    if ((width <= image->columns) || (s == (char *) NULL))
       continue;
-    (void) strcpy(text,draw_info->text);
     if ((s != (char *) NULL) && (GetUTFOctets(s) == 1))
       {
         *s='\n';
         p=s;
       }
     else
-      if ((s != (char *) NULL) || (split != MagickFalse))
+      if (split != MagickFalse)
         {
           char
             *target;
@@ -663,7 +656,61 @@ MagickExport ssize_t FormatMagickCaption(Image *image,DrawInfo *draw_info,
     q=draw_info->text;
     s=(char *) NULL;
   }
-  text=DestroyString(text);
+  if (width > image->columns)
+    {
+      char
+        *text;
+
+      /*
+        No convenient break point, force one.
+      */
+      text=AcquireString(draw_info->text);
+      q=draw_info->text;
+      s=(char *) NULL;
+      for (p=(*caption); GetUTFCode(p) != 0; p+=GetUTFOctets(p))
+      {
+        if (IsUTFSpace(GetUTFCode(p)) != MagickFalse)
+          s=p;
+        if (GetUTFCode(p) == '\n')
+          q=draw_info->text;
+        for (i=0; i < (ssize_t) GetUTFOctets(p); i++)
+          *q++=(*(p+i));
+        *q='\0';
+        status=GetTypeMetrics(image,draw_info,metrics,exception);
+        if (status == MagickFalse)
+          break;
+        width=(size_t) floor(metrics->width+draw_info->stroke_width+0.5);
+        if ((width <= image->columns) || (strcmp(text,draw_info->text) == 0))
+          continue;
+        (void) strcpy(text,draw_info->text);
+        if ((s != (char *) NULL) && (GetUTFOctets(s) == 1))
+          {
+            *s='\n';
+            p=s;
+          }
+        else
+          if ((s != (char *) NULL) || (split != MagickFalse))
+            {
+              char
+                *target;
+
+              /*
+                No convenient line breaks-- insert newline.
+              */
+              target=AcquireString(*caption);
+              n=p-(*caption);
+              CopyMagickString(target,*caption,n+1);
+              ConcatenateMagickString(target,"\n",strlen(*caption)+1);
+              ConcatenateMagickString(target,p,strlen(*caption)+2);
+              (void) DestroyString(*caption);
+              *caption=target;
+              p=(*caption)+n;
+            }
+        q=draw_info->text;
+        s=(char *) NULL;
+      }
+      text=DestroyString(text);
+    }
   n=0;
   for (p=(*caption); GetUTFCode(p) != 0; p+=GetUTFOctets(p))
     if (GetUTFCode(p) == '\n')
@@ -926,6 +973,8 @@ static MagickBooleanType RenderType(Image *image,const DrawInfo *draw_info,
         }
       if (*draw_info->font == '-')
         return(RenderX11(image,draw_info,offset,metrics,exception));
+      if (*draw_info->font == '^')
+        return(RenderPostscript(image,draw_info,offset,metrics,exception));
       if (IsPathAccessible(draw_info->font) != MagickFalse)
         {
           status=RenderFreetype(image,draw_info,draw_info->encoding,offset,
@@ -1117,6 +1166,7 @@ cleanup:
   ssize_t
     last_glyph;
 
+  magick_unreferenced(image);
   magick_unreferenced(exception);
 
   /*
@@ -1338,7 +1388,7 @@ static MagickBooleanType RenderFreetype(Image *image,const DrawInfo *draw_info,
       (void) FT_Done_FreeType(library);
       (void) ThrowMagickException(exception,GetMagickModule(),TypeError,
         "UnableToReadFont","`%s'",draw_info->font);
-      return(RenderPostscript(image,draw_info,offset,metrics,exception));
+      return(MagickFalse);
     }
   if ((draw_info->metrics != (char *) NULL) &&
       (IsPathAccessible(draw_info->metrics) != MagickFalse))
@@ -1398,12 +1448,12 @@ static MagickBooleanType RenderFreetype(Image *image,const DrawInfo *draw_info,
         geometry_info;
 
       MagickStatusType
-        flags;
+        geometry_flags;
 
-      flags=ParseGeometry(draw_info->density,&geometry_info);
+      geometry_flags=ParseGeometry(draw_info->density,&geometry_info);
       resolution.x=geometry_info.rho;
       resolution.y=geometry_info.sigma;
-      if ((flags & SigmaValue) == 0)
+      if ((geometry_flags & SigmaValue) == 0)
         resolution.y=resolution.x;
     }
   ft_status=FT_Set_Char_Size(face,(FT_F26Dot6) (64.0*draw_info->pointsize),
@@ -1448,7 +1498,9 @@ static MagickBooleanType RenderFreetype(Image *image,const DrawInfo *draw_info,
       encoding != (char *) NULL ? encoding : "none",
       draw_info->encoding != (char *) NULL ? draw_info->encoding : "none",
       draw_info->pointsize);
-  flags=FT_LOAD_NO_BITMAP;
+  flags=FT_LOAD_DEFAULT;
+  if (draw_info->render == MagickFalse)
+    flags=FT_LOAD_NO_BITMAP;
   if (draw_info->text_antialias == MagickFalse)
     flags|=FT_LOAD_TARGET_MONO;
   else
@@ -1572,12 +1624,20 @@ static MagickBooleanType RenderFreetype(Image *image,const DrawInfo *draw_info,
         CacheView
           *image_view;
 
+        MagickBooleanType
+          transparent_fill;
+
         register unsigned char
           *r;
 
         /*
           Rasterize the glyph.
         */
+        transparent_fill=((draw_info->fill.alpha == TransparentAlpha) &&
+          (draw_info->fill_pattern == (Image *) NULL) &&
+          (draw_info->stroke.alpha == TransparentAlpha) &&
+          (draw_info->stroke_pattern == (Image *) NULL)) ? MagickTrue :
+          MagickFalse;
         image_view=AcquireAuthenticCacheView(image,exception);
         r=bitmap->bitmap.buffer;
         for (y=0; y < (ssize_t) bitmap->bitmap.rows; y++)
@@ -1641,11 +1701,26 @@ static MagickBooleanType RenderFreetype(Image *image,const DrawInfo *draw_info,
                 exception);
             if (q == (Quantum *) NULL)
               continue;
-            GetPixelInfo(image,&fill_color);
-            GetFillColor(draw_info,x_offset,y_offset,&fill_color,exception);
-            fill_opacity=fill_opacity*fill_color.alpha;
-            CompositePixelOver(image,&fill_color,fill_opacity,q,
-              GetPixelAlpha(image,q),q);
+            if (transparent_fill == MagickFalse)
+              {
+                GetPixelInfo(image,&fill_color);
+                GetFillColor(draw_info,x_offset,y_offset,&fill_color,
+                  exception);
+                fill_opacity=fill_opacity*fill_color.alpha;
+                CompositePixelOver(image,&fill_color,fill_opacity,q,
+                  GetPixelAlpha(image,q),q);
+              }
+            else
+              {
+                double
+                  Sa,
+                  Da;
+                
+                Da=1.0-(QuantumScale*GetPixelAlpha(image,q));
+                Sa=fill_opacity;
+                fill_opacity=(1.0-RoundToUnity(Sa+Da-Sa*Da))*QuantumRange;
+                SetPixelAlpha(image,fill_opacity,q);
+              }
             if (active == MagickFalse)
               {
                 sync=SyncCacheViewAuthenticPixels(image_view,exception);

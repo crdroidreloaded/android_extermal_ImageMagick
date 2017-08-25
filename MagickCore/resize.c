@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -1741,7 +1741,7 @@ MagickExport Image *InterpolativeResizeImage(const Image *image,
       register ssize_t
         i;
 
-      if (GetPixelReadMask(resize_image,q) == 0)
+      if (GetPixelWriteMask(resize_image,q) == 0)
         {
           q+=GetPixelChannels(resize_image);
           continue;
@@ -1943,14 +1943,14 @@ MagickExport Image *LiquidRescaleImage(const Image *image,const size_t columns,
   while (lqr_carver_scan_ext(carver,&x_offset,&y_offset,(void **) &packet) != 0)
   {
     register Quantum
-      *magick_restrict q;
+      *magick_restrict p;
 
     register ssize_t
       i;
 
-    q=QueueCacheViewAuthenticPixels(rescale_view,x_offset,y_offset,1,1,
+    p=QueueCacheViewAuthenticPixels(rescale_view,x_offset,y_offset,1,1,
       exception);
-    if (q == (Quantum *) NULL)
+    if (p == (Quantum *) NULL)
       break;
     for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
     {
@@ -1968,7 +1968,7 @@ MagickExport Image *LiquidRescaleImage(const Image *image,const size_t columns,
           (rescale_traits == UndefinedPixelTrait))
         continue;
       SetPixelChannel(rescale_image,channel,ClampToQuantum(QuantumRange*
-        packet[i]),q);
+        packet[i]),p);
     }
     if (SyncCacheViewAuthenticPixels(rescale_view,exception) == MagickFalse)
       break;
@@ -2538,7 +2538,7 @@ static MagickBooleanType HorizontalFilter(const ResizeFilter *resize_filter,
             (resize_traits == UndefinedPixelTrait))
           continue;
         if (((resize_traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(resize_image,q) == 0))
+            (GetPixelWriteMask(resize_image,q) == 0))
           {
             j=(ssize_t) (MagickMin(MagickMax(bisect,(double) start),(double)
               stop-1.0)+0.5);
@@ -2754,7 +2754,7 @@ static MagickBooleanType VerticalFilter(const ResizeFilter *resize_filter,
             (resize_traits == UndefinedPixelTrait))
           continue;
         if (((resize_traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(resize_image,q) == 0))
+            (GetPixelWriteMask(resize_image,q) == 0))
           {
             j=(ssize_t) (MagickMin(MagickMax(bisect,(double) start),(double)
               stop-1.0)+0.5);
@@ -2981,7 +2981,7 @@ MagickExport Image *SampleImage(const Image *image,const size_t columns,
     progress;
 
   register ssize_t
-    x;
+    x1;
 
   ssize_t
     *x_offset,
@@ -3040,8 +3040,8 @@ MagickExport Image *SampleImage(const Image *image,const size_t columns,
       sample_image=DestroyImage(sample_image);
       ThrowImageException(ResourceLimitError,"MemoryAllocationFailed");
     }
-  for (x=0; x < (ssize_t) sample_image->columns; x++)
-    x_offset[x]=(ssize_t) ((((double) x+sample_offset.x)*image->columns)/
+  for (x1=0; x1 < (ssize_t) sample_image->columns; x1++)
+    x_offset[x1]=(ssize_t) ((((double) x1+sample_offset.x)*image->columns)/
       sample_image->columns);
   /*
     Sample each row.
@@ -3089,7 +3089,7 @@ MagickExport Image *SampleImage(const Image *image,const size_t columns,
       register ssize_t
         i;
 
-      if (GetPixelReadMask(sample_image,q) == 0)
+      if (GetPixelWriteMask(sample_image,q) == 0)
         {
           q+=GetPixelChannels(sample_image);
           continue;
@@ -3193,12 +3193,8 @@ MagickExport Image *ScaleImage(const Image *image,const size_t columns,
     proceed,
     status;
 
-  PixelChannel
-    channel;
-
   PixelTrait
-    scale_traits,
-    traits;
+    scale_traits;
 
   PointInfo
     scale,
@@ -3302,7 +3298,7 @@ MagickExport Image *ScaleImage(const Image *image,const size_t columns,
           }
         for (x=0; x < (ssize_t) image->columns; x++)
         {
-          if (GetPixelReadMask(image,p) == 0)
+          if (GetPixelWriteMask(image,p) == 0)
             {
               p+=GetPixelChannels(image);
               continue;
@@ -3345,7 +3341,7 @@ MagickExport Image *ScaleImage(const Image *image,const size_t columns,
                 }
               for (x=0; x < (ssize_t) image->columns; x++)
               {
-                if (GetPixelReadMask(image,p) == 0)
+                if (GetPixelWriteMask(image,p) == 0)
                   {
                     p+=GetPixelChannels(image);
                     continue;
@@ -3389,7 +3385,7 @@ MagickExport Image *ScaleImage(const Image *image,const size_t columns,
               }
             for (x=0; x < (ssize_t) image->columns; x++)
             {
-              if (GetPixelReadMask(image,p) == 0)
+              if (GetPixelWriteMask(image,p) == 0)
                 {
                   p+=GetPixelChannels(image);
                   continue;
@@ -3437,7 +3433,7 @@ MagickExport Image *ScaleImage(const Image *image,const size_t columns,
         */
         for (x=0; x < (ssize_t) scale_image->columns; x++)
         {
-          if (GetPixelReadMask(scale_image,q) == 0)
+          if (GetPixelWriteMask(scale_image,q) == 0)
             {
               q+=GetPixelChannels(scale_image);
               continue;
@@ -3450,8 +3446,8 @@ MagickExport Image *ScaleImage(const Image *image,const size_t columns,
             }
           for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
           {
-            channel=GetPixelChannelChannel(image,i);
-            traits=GetPixelChannelTraits(image,channel);
+            PixelChannel channel=GetPixelChannelChannel(image,i);
+            PixelTrait traits=GetPixelChannelTraits(image,channel);
             scale_traits=GetPixelChannelTraits(scale_image,channel);
             if ((traits == UndefinedPixelTrait) ||
                 (scale_traits == UndefinedPixelTrait))
@@ -3533,7 +3529,7 @@ MagickExport Image *ScaleImage(const Image *image,const size_t columns,
       */
       for (x=0; x < (ssize_t) scale_image->columns; x++)
       {
-        if (GetPixelReadMask(scale_image,q) == 0)
+        if (GetPixelWriteMask(scale_image,q) == 0)
           {
             q+=GetPixelChannels(scale_image);
             continue;
@@ -3630,6 +3626,7 @@ MagickExport Image *ThumbnailImage(const Image *image,const size_t columns,
 #define SampleFactor  5
 
   char
+    *url,
     value[MagickPathExtent];
 
   const char
@@ -3641,9 +3638,6 @@ MagickExport Image *ThumbnailImage(const Image *image,const size_t columns,
   double
     x_factor,
     y_factor;
-
-  size_t
-    version;
 
   struct stat
     attributes;
@@ -3715,8 +3709,9 @@ MagickExport Image *ThumbnailImage(const Image *image,const size_t columns,
   (void) FormatLocaleString(value,MagickPathExtent,"image/%s",image->magick);
   LocaleLower(value);
   (void) SetImageProperty(thumbnail_image,"Thumb::Mimetype",value,exception);
-  (void) SetImageProperty(thumbnail_image,"software",GetMagickVersion(&version),
-    exception);
+  url=GetMagickHomeURL();
+  (void) SetImageProperty(thumbnail_image,"software",url,exception);
+  url=DestroyString(url);
   (void) FormatLocaleString(value,MagickPathExtent,"%.20g",(double)
     image->magick_columns);
   (void) SetImageProperty(thumbnail_image,"Thumb::Image::Width",value,

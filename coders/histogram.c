@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -368,6 +368,7 @@ static MagickBooleanType WriteHISTOGRAMImage(const ImageInfo *image_info,
   */
   (void) CopyMagickString(histogram_image->filename,image_info->filename,
     MagickPathExtent);
+  (void) ResetImagePage(histogram_image,"0x0+0+0");
   write_info=CloneImageInfo(image_info);
   *write_info->magick='\0';
   (void) SetImageInfo(write_info,1,exception);
@@ -375,10 +376,10 @@ static MagickBooleanType WriteHISTOGRAMImage(const ImageInfo *image_info,
       (LocaleCompare(write_info->magick,"HISTOGRAM") == 0))
     (void) FormatLocaleString(histogram_image->filename,MagickPathExtent,
       "miff:%s",write_info->filename);
-  histogram_image->blob=DetachBlob(histogram_image->blob);
+  histogram_image->blob=(BlobInfo *) DetachBlob(histogram_image->blob);
   histogram_image->blob=CloneBlobInfo(image->blob);
   status=WriteImage(write_info,histogram_image,exception);
-  image->blob=DetachBlob(image->blob);
+  image->blob=(BlobInfo *) DetachBlob(image->blob);
   image->blob=CloneBlobInfo(histogram_image->blob);
   histogram_image=DestroyImage(histogram_image);
   write_info=DestroyImageInfo(write_info);

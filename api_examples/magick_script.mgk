@@ -2,18 +2,22 @@
 #
 # Magick Script
 #
+# Assumes the "magick-script" symlink to "magick" command has been installed
+#
 -size 100x100 xc:red
 ( rose: -rotate -90 )
 +append   -write show:
 
 # exit - not really needed here -- more for pipelines and debugging
 -exit
+
+
 -------------------------------------------------------------------------------
 This area is completely ignored by the magick script.
 
 If you want you can put uncommented documentation such as Perl POD
 which reformat such documentation into many different doc formats.
-A bit like what Imagemagick does not Images!
+A bit like what Imagemagick does with Images!
 
 Or you can just put any old rubbish -- much like this :-)
 

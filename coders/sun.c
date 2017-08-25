@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -263,7 +263,8 @@ static Image *ReadSUNImage(const ImageInfo *image_info,ExceptionInfo *exception)
     bytes_per_line,
     extent,
     height,
-    pixels_length;
+    pixels_length,
+    quantum;
 
   ssize_t
     count,
@@ -335,6 +336,8 @@ static Image *ReadSUNImage(const ImageInfo *image_info,ExceptionInfo *exception)
         size_t
           one;
 
+        if (sun_info.maplength > GetBlobSize(image))
+          ThrowReaderException(CorruptImageError,"InsufficientImageDataInFile");
         image->colors=sun_info.maplength;
         one=1;
         if (sun_info.maptype == RMT_NONE)
@@ -362,19 +365,28 @@ static Image *ReadSUNImage(const ImageInfo *image_info,ExceptionInfo *exception)
           ThrowReaderException(ResourceLimitError,"MemoryAllocationFailed");
         count=ReadBlob(image,image->colors,sun_colormap);
         if (count != (ssize_t) image->colors)
-          ThrowReaderException(CorruptImageError,"UnexpectedEndOfFile");
+          {
+            sun_colormap=(unsigned char *) RelinquishMagickMemory(sun_colormap);
+            ThrowReaderException(CorruptImageError,"UnexpectedEndOfFile");
+          }
         for (i=0; i < (ssize_t) image->colors; i++)
           image->colormap[i].red=(MagickRealType) ScaleCharToQuantum(
             sun_colormap[i]);
         count=ReadBlob(image,image->colors,sun_colormap);
         if (count != (ssize_t) image->colors)
-          ThrowReaderException(CorruptImageError,"UnexpectedEndOfFile");
+          {
+            sun_colormap=(unsigned char *) RelinquishMagickMemory(sun_colormap);
+            ThrowReaderException(CorruptImageError,"UnexpectedEndOfFile");
+          }
         for (i=0; i < (ssize_t) image->colors; i++)
           image->colormap[i].green=(MagickRealType) ScaleCharToQuantum(
             sun_colormap[i]);
         count=ReadBlob(image,image->colors,sun_colormap);
         if (count != (ssize_t) image->colors)
-          ThrowReaderException(CorruptImageError,"UnexpectedEndOfFile");
+          {
+            sun_colormap=(unsigned char *) RelinquishMagickMemory(sun_colormap);
+            ThrowReaderException(CorruptImageError,"UnexpectedEndOfFile");
+          }
         for (i=0; i < (ssize_t) image->colors; i++)
           image->colormap[i].blue=(MagickRealType) ScaleCharToQuantum(
             sun_colormap[i]);
@@ -394,9 +406,9 @@ static Image *ReadSUNImage(const ImageInfo *image_info,ExceptionInfo *exception)
         if (sun_colormap == (unsigned char *) NULL)
           ThrowReaderException(ResourceLimitError,"MemoryAllocationFailed");
         count=ReadBlob(image,sun_info.maplength,sun_colormap);
+        sun_colormap=(unsigned char *) RelinquishMagickMemory(sun_colormap);
         if (count != (ssize_t) sun_info.maplength)
           ThrowReaderException(CorruptImageError,"UnexpectedEndOfFile");
-        sun_colormap=(unsigned char *) RelinquishMagickMemory(sun_colormap);
         break;
       }
       default:
@@ -440,9 +452,10 @@ static Image *ReadSUNImage(const ImageInfo *image_info,ExceptionInfo *exception)
         sun_data=(unsigned char *) RelinquishMagickMemory(sun_data);
         ThrowReaderException(ResourceLimitError,"ImproperImageHeader");
       }
-    bytes_per_line+=15;
+    quantum=sun_info.depth == 1 ? 15 : 7;
+    bytes_per_line+=quantum;
     bytes_per_line<<=1;
-    if ((bytes_per_line >> 1) != (sun_info.width*sun_info.depth+15))
+    if ((bytes_per_line >> 1) != (sun_info.width*sun_info.depth+quantum))
       {
         sun_data=(unsigned char *) RelinquishMagickMemory(sun_data);
         ThrowReaderException(ResourceLimitError,"ImproperImageHeader");
@@ -454,7 +467,7 @@ static Image *ReadSUNImage(const ImageInfo *image_info,ExceptionInfo *exception)
         ThrowReaderException(ResourceLimitError,"ImproperImageHeader");
       }
     pixels_length=height*bytes_per_line;
-    sun_pixels=(unsigned char *) AcquireQuantumMemory(pixels_length,
+    sun_pixels=(unsigned char *) AcquireQuantumMemory(pixels_length+image->rows,
       sizeof(*sun_pixels));
     if (sun_pixels == (unsigned char *) NULL)
       {
@@ -673,10 +686,12 @@ ModuleExport size_t RegisterSUNImage(void)
   entry->decoder=(DecodeImageHandler *) ReadSUNImage;
   entry->encoder=(EncodeImageHandler *) WriteSUNImage;
   entry->magick=(IsImageFormatHandler *) IsSUN;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("SUN","SUN","SUN Rasterfile");
   entry->decoder=(DecodeImageHandler *) ReadSUNImage;
   entry->encoder=(EncodeImageHandler *) WriteSUNImage;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   return(MagickImageCoderSignature);
 }
@@ -816,10 +831,10 @@ static MagickBooleanType WriteSUNImage(const ImageInfo *image_info,Image *image,
         /*
           Full color SUN raster.
         */
-        sun_info.depth=(unsigned int) image->alpha_trait != UndefinedPixelTrait ?
-          32U : 24U;
-        sun_info.length=(unsigned int) ((image->alpha_trait != UndefinedPixelTrait ?
-          4 : 3)*number_pixels);
+        sun_info.depth=(unsigned int) image->alpha_trait !=
+          UndefinedPixelTrait ? 32U : 24U;
+        sun_info.length=(unsigned int) ((image->alpha_trait !=
+          UndefinedPixelTrait ? 4 : 3)*number_pixels);
         sun_info.length+=sun_info.length & 0x01 ? (unsigned int) image->rows :
           0;
       }

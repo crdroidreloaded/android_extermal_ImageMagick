@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -116,11 +116,11 @@ MagickExport MagickBooleanType AcquireImageColormap(Image *image,
     (void) LogMagickEvent(TraceEvent,GetMagickModule(),"%s",image->filename);
   image->colors=MagickMax(colors,1);
   if (image->colormap == (PixelInfo *) NULL)
-    image->colormap=(PixelInfo *) AcquireQuantumMemory(image->colors,
+    image->colormap=(PixelInfo *) AcquireQuantumMemory(image->colors+1,
       sizeof(*image->colormap));
   else
     image->colormap=(PixelInfo *) ResizeQuantumMemory(image->colormap,
-      image->colors,sizeof(*image->colormap));
+      image->colors+1,sizeof(*image->colormap));
   if (image->colormap == (PixelInfo *) NULL)
     {
       image->colors=0;

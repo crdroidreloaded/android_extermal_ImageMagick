@@ -17,13 +17,13 @@
 %                                  July 1992                                  %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -34,7 +34,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %  The XShearImage() and YShearImage() methods are based on the paper "A Fast
-%  Algorithm for General Raster Rotatation" by Alan W. Paeth, Graphics
+%  Algorithm for General Raster Rotation" by Alan W. Paeth, Graphics
 %  Interface '86 (Vancouver).  ShearRotateImage() is adapted from a similar
 %  method based on the Paeth paper written by Michael Halle of the Spatial
 %  Imaging Group, MIT Media Lab.
@@ -198,11 +198,6 @@ static MagickBooleanType CropToFitImage(Image **image,
 %  defined, while the amount the image is to be deskewed, in degrees is also
 %  saved as the artifact "deskew:angle".
 %
-%  If the artifact "deskew:auto-crop" is given the image will be automatically
-%  cropped of the excess background.  The value is the border width of all
-%  pixels around the edge that will be used to determine an average border
-%  color for the automatic trim.
-%
 %  The format of the DeskewImage method is:
 %
 %      Image *DeskewImage(const Image *image,const double threshold,
@@ -357,8 +352,8 @@ static MagickBooleanType RadonTransform(const Image *image,
   for (width=1; width < ((image->columns+7)/8); width<<=1) ;
   source_matrixs=AcquireMatrixInfo(width,image->rows,sizeof(unsigned short),
     exception);
-  destination_matrixs=AcquireMatrixInfo(width,image->rows,sizeof(unsigned short),
-    exception);
+  destination_matrixs=AcquireMatrixInfo(width,image->rows,
+    sizeof(unsigned short),exception);
   if ((source_matrixs == (MatrixInfo *) NULL) ||
       (destination_matrixs == (MatrixInfo *) NULL))
     {
@@ -835,7 +830,7 @@ MagickExport Image *IntegralRotateImage(const Image *image,size_t rotations,
               register ssize_t
                 i;
 
-              if (GetPixelReadMask(image,tile_pixels) == 0)
+              if (GetPixelWriteMask(image,tile_pixels) == 0)
                 {
                   tile_pixels-=width*GetPixelChannels(image);
                   q+=GetPixelChannels(rotate_image);
@@ -925,7 +920,7 @@ MagickExport Image *IntegralRotateImage(const Image *image,size_t rotations,
             i;
 
           q-=GetPixelChannels(rotate_image);
-          if (GetPixelReadMask(image,p) == 0)
+          if (GetPixelWriteMask(image,p) == 0)
             {
               p+=GetPixelChannels(image);
               continue;
@@ -962,10 +957,10 @@ MagickExport Image *IntegralRotateImage(const Image *image,size_t rotations,
       }
       (void) SetImageProgress(image,RotateImageTag,(MagickOffsetType)
         image->rows-1,image->rows);
-      Swap(page.width,page.height);
-      Swap(page.x,page.y);
       if (page.width != 0)
         page.x=(ssize_t) (page.width-rotate_image->columns-page.x);
+      if (page.height != 0)
+        page.y=(ssize_t) (page.height-rotate_image->rows-page.y);
       break;
     }
     case 3:
@@ -1048,7 +1043,7 @@ MagickExport Image *IntegralRotateImage(const Image *image,size_t rotations,
               register ssize_t
                 i;
 
-              if (GetPixelReadMask(image,tile_pixels) == 0)
+              if (GetPixelWriteMask(image,tile_pixels) == 0)
                 {
                   tile_pixels+=width*GetPixelChannels(image);
                   q+=GetPixelChannels(rotate_image);
@@ -1091,8 +1086,8 @@ MagickExport Image *IntegralRotateImage(const Image *image,size_t rotations,
         image->rows-1,image->rows);
       Swap(page.width,page.height);
       Swap(page.x,page.y);
-      if (page.width != 0)
-        page.x=(ssize_t) (page.width-rotate_image->columns-page.x);
+      if (page.height != 0)
+        page.y=(ssize_t) (page.height-rotate_image->rows-page.y);
       break;
     }
     default:

@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -600,7 +600,6 @@ static Image *ReadDIBImage(const ImageInfo *image_info,ExceptionInfo *exception)
   if (image->storage_class == PseudoClass)
     {
       size_t
-        length,
         packet_size;
 
       unsigned char
@@ -619,7 +618,10 @@ static Image *ReadDIBImage(const ImageInfo *image_info,ExceptionInfo *exception)
       packet_size=4;
       count=ReadBlob(image,packet_size*image->colors,dib_colormap);
       if (count != (ssize_t) (packet_size*image->colors))
-        ThrowReaderException(CorruptImageError,"InsufficientImageDataInFile");
+        {
+          dib_colormap=(unsigned char *) RelinquishMagickMemory(dib_colormap);
+          ThrowReaderException(CorruptImageError,"InsufficientImageDataInFile");
+        }
       p=dib_colormap;
       for (i=0; i < (ssize_t) image->colors; i++)
       {
@@ -648,7 +650,10 @@ static Image *ReadDIBImage(const ImageInfo *image_info,ExceptionInfo *exception)
     {
       count=ReadBlob(image,length,pixels);
       if (count != (ssize_t) (length))
-        ThrowReaderException(CorruptImageError,"InsufficientImageDataInFile");
+        {
+          pixel_info=RelinquishVirtualMemory(pixel_info);
+          ThrowReaderException(CorruptImageError,"InsufficientImageDataInFile");
+        }
     }
   else
     {
@@ -658,7 +663,11 @@ static Image *ReadDIBImage(const ImageInfo *image_info,ExceptionInfo *exception)
       status=DecodeImage(image,dib_info.compression ? MagickTrue : MagickFalse,
         pixels);
       if (status == MagickFalse)
-        ThrowReaderException(CorruptImageError,"UnableToRunlengthDecodeImage");
+        {
+          pixel_info=RelinquishVirtualMemory(pixel_info);
+          ThrowReaderException(CorruptImageError,
+            "UnableToRunlengthDecodeImage");
+        }
     }
   /*
     Initialize image structure.
@@ -877,6 +886,7 @@ static Image *ReadDIBImage(const ImageInfo *image_info,ExceptionInfo *exception)
       break;
     }
     default:
+      pixel_info=RelinquishVirtualMemory(pixel_info);
       ThrowReaderException(CorruptImageError,"ImproperImageHeader");
   }
   pixel_info=RelinquishVirtualMemory(pixel_info);

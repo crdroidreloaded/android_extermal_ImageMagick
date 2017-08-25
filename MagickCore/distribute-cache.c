@@ -22,13 +22,13 @@
 %                                January 2013                                 %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -201,7 +201,7 @@ static int ConnectPixelCacheServer(const char *hostname,const int port,
     Connect to distributed pixel cache and get session key.
   */
   *session_key=0;
-  shared_secret=GetPolicyValue("shared-secret");
+  shared_secret=GetPolicyValue("cache:shared-secret");
   if (shared_secret == (char *) NULL)
     {
       shared_secret=DestroyString(shared_secret);
@@ -805,7 +805,7 @@ static HANDLER_RETURN_TYPE DistributePixelCacheClient(void *socket)
   /*
     Distributed pixel cache client.
   */
-  shared_secret=GetPolicyValue("shared-secret");
+  shared_secret=GetPolicyValue("cache:shared-secret");
   if (shared_secret == (char *) NULL)
     ThrowFatalException(CacheFatalError,"shared secret expected");
   p=session;

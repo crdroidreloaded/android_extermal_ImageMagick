@@ -17,13 +17,13 @@
 %                                 October 1996                                %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -133,8 +133,7 @@ struct _FxInfo
   ExceptionInfo
     *exception;
 };
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -150,19 +149,19 @@ struct _FxInfo
 %
 %  The format of the AcquireFxInfo method is:
 %
-%      FxInfo *AcquireFxInfo(Image *image,const char *expression,
+%      FxInfo *AcquireFxInfo(Image *images,const char *expression,
 %        ExceptionInfo *exception)
 %
 %  A description of each parameter follows:
 %
-%    o image: the image.
+%    o images: the image sequence.
 %
 %    o expression: the expression.
 %
 %    o exception: return any errors or warnings in this structure.
 %
 */
-MagickPrivate FxInfo *AcquireFxInfo(const Image *image,const char *expression,
+MagickPrivate FxInfo *AcquireFxInfo(const Image *images,const char *expression,
   ExceptionInfo *exception)
 {
   char
@@ -182,9 +181,9 @@ MagickPrivate FxInfo *AcquireFxInfo(const Image *image,const char *expression,
     ThrowFatalException(ResourceLimitFatalError,"MemoryAllocationFailed");
   (void) ResetMagickMemory(fx_info,0,sizeof(*fx_info));
   fx_info->exception=AcquireExceptionInfo();
-  fx_info->images=image;
+  fx_info->images=images;
   fx_info->colors=NewSplayTree(CompareSplayTreeString,RelinquishMagickMemory,
-    RelinquishAlignedMemory);
+    RelinquishMagickMemory);
   fx_info->symbols=NewSplayTree(CompareSplayTreeString,RelinquishMagickMemory,
     RelinquishMagickMemory);
   fx_info->view=(CacheView **) AcquireQuantumMemory(GetImageListLength(
@@ -233,8 +232,7 @@ MagickPrivate FxInfo *AcquireFxInfo(const Image *image,const char *expression,
   (void) SubstituteString(&fx_info->expression,"**",fx_op);
   return(fx_info);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -372,7 +370,7 @@ MagickExport Image *AddNoiseImage(const Image *image,const NoiseType noise_type,
             (noise_traits == UndefinedPixelTrait))
           continue;
         if (((noise_traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(image,p) == 0))
+            (GetPixelWriteMask(image,p) == 0))
           {
             SetPixelChannel(noise_image,channel,p[i],q);
             continue;
@@ -408,8 +406,7 @@ MagickExport Image *AddNoiseImage(const Image *image,const NoiseType noise_type,
     noise_image=DestroyImage(noise_image);
   return(noise_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -564,8 +561,7 @@ MagickExport Image *BlueShiftImage(const Image *image,const double factor,
     shift_image=DestroyImage(shift_image);
   return(shift_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -627,8 +623,7 @@ MagickExport Image *CharcoalImage(const Image *image,const double radius,
   (void) GrayscaleImage(charcoal_image,image->intensity,exception);
   return(charcoal_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -780,7 +775,7 @@ MagickExport Image *ColorizeImage(const Image *image,const char *blend,
         if (traits == UndefinedPixelTrait)
           continue;
         if (((traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(colorize_image,q) == 0))
+            (GetPixelWriteMask(colorize_image,q) == 0))
           continue;
         SetPixelChannel(colorize_image,(PixelChannel) i,ClampToQuantum(
           Colorize(q[i],GetPixelInfoChannel(&blend_percentage,(PixelChannel) i),
@@ -810,8 +805,7 @@ MagickExport Image *ColorizeImage(const Image *image,const char *blend,
     colorize_image=DestroyImage(colorize_image);
   return(colorize_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -1033,8 +1027,7 @@ MagickExport Image *ColorMatrixImage(const Image *image,
     color_image=DestroyImage(color_image);
   return(color_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -1073,8 +1066,7 @@ MagickPrivate FxInfo *DestroyFxInfo(FxInfo *fx_info)
   fx_info=(FxInfo *) RelinquishMagickMemory(fx_info);
   return(fx_info);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -1138,8 +1130,7 @@ static double FxChannelStatistics(FxInfo *fx_info,Image *image,
       if (option >= 0)
         {
           channel=(PixelChannel) option;
-          channel_mask=(ChannelType) (channel_mask | (1 << channel));
-          (void) SetPixelChannelMask(image,channel_mask);
+          channel_mask=SetPixelChannelMask(image,(ChannelType) (1 << channel));
         }
     }
   (void) FormatLocaleString(key,MagickPathExtent,"%p.%.20g.%s",(void *) image,
@@ -1337,7 +1328,7 @@ static double FxGetSymbol(FxInfo *fx_info,const PixelChannel channel,
               *q='\0';
               alpha=FxEvaluateSubexpression(fx_info,channel,x,y,subexpression,
                 &depth,&beta,exception);
-              i=(ssize_t) (alpha+0.5);
+              i=(ssize_t) alpha;
               p++;
             }
           if (*p == '.')
@@ -2984,8 +2975,7 @@ MagickPrivate MagickBooleanType FxEvaluateChannelExpression(FxInfo *fx_info,
     &beta,exception);
   return(exception->severity == OptionError ? MagickFalse : MagickTrue);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -3170,7 +3160,7 @@ MagickExport Image *FxImage(const Image *image,const char *expression,
             (fx_traits == UndefinedPixelTrait))
           continue;
         if (((fx_traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(image,p) == 0))
+            (GetPixelWriteMask(image,p) == 0))
           {
             SetPixelChannel(fx_image,channel,p[i],q);
             continue;
@@ -3205,8 +3195,7 @@ MagickExport Image *FxImage(const Image *image,const char *expression,
     fx_image=DestroyImage(fx_image);
   return(fx_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -3356,7 +3345,7 @@ MagickExport Image *ImplodeImage(const Image *image,const double amount,
       /*
         Determine if the pixel is within an ellipse.
       */
-      if (GetPixelReadMask(image,p) == 0)
+      if (GetPixelWriteMask(image,p) == 0)
         {
           SetPixelBackgoundColor(implode_image,q);
           p+=GetPixelChannels(image);
@@ -3417,8 +3406,7 @@ MagickExport Image *ImplodeImage(const Image *image,const double amount,
     implode_image=DestroyImage(implode_image);
   return(implode_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -3600,7 +3588,7 @@ MagickExport Image *MorphImages(const Image *image,const size_t number_frames,
                 (morph_traits == UndefinedPixelTrait))
               continue;
             if (((morph_traits & CopyPixelTrait) != 0) ||
-                (GetPixelReadMask(morph_images,p) == 0))
+                (GetPixelWriteMask(morph_images,p) == 0))
               {
                 SetPixelChannel(morph_image,channel,p[i],q);
                 continue;
@@ -3654,8 +3642,7 @@ MagickExport Image *MorphImages(const Image *image,const size_t number_frames,
     }
   return(GetFirstImageInList(morph_images));
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -3949,8 +3936,7 @@ MagickExport MagickBooleanType PlasmaImage(Image *image,
   image_view=DestroyCacheView(image_view);
   return(status);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -4142,8 +4128,7 @@ MagickExport Image *PolaroidImage(const Image *image,const DrawInfo *draw_info,
   polaroid_image=trim_image;
   return(polaroid_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -4292,8 +4277,7 @@ MagickExport Image *SepiaToneImage(const Image *image,const double threshold,
     sepia_image=DestroyImage(sepia_image);
   return(sepia_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -4439,8 +4423,7 @@ MagickExport Image *ShadowImage(const Image *image,const double alpha,
   shadow_image->page.y+=y_offset-(ssize_t) border_info.height;
   return(shadow_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -4547,7 +4530,7 @@ MagickExport Image *SketchImage(const Image *image,const double radius,
       register ssize_t
         i;
 
-      if (GetPixelReadMask(random_image,q) == 0)
+      if (GetPixelWriteMask(random_image,q) == 0)
         {
           q+=GetPixelChannels(random_image);
           continue;
@@ -4607,8 +4590,7 @@ MagickExport Image *SketchImage(const Image *image,const double radius,
   blend_image=DestroyImage(blend_image);
   return(sketch_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -4711,7 +4693,7 @@ MagickExport MagickBooleanType SolarizeImage(Image *image,
       register ssize_t
         i;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -4745,8 +4727,7 @@ MagickExport MagickBooleanType SolarizeImage(Image *image,
   image_view=DestroyCacheView(image_view);
   return(status);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -4917,8 +4898,7 @@ MagickExport Image *SteganoImage(const Image *image,const Image *watermark,
     stegano_image=DestroyImage(stegano_image);
   return(stegano_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -5061,8 +5041,7 @@ MagickExport Image *StereoAnaglyphImage(const Image *left_image,
     stereo_image=DestroyImage(stereo_image);
   return(stereo_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -5201,7 +5180,7 @@ MagickExport Image *SwirlImage(const Image *image,double degrees,
       /*
         Determine if the pixel is within an ellipse.
       */
-      if (GetPixelReadMask(image,p) == 0)
+      if (GetPixelWriteMask(image,p) == 0)
         {
           SetPixelBackgoundColor(swirl_image,q);
           p+=GetPixelChannels(image);
@@ -5268,8 +5247,7 @@ MagickExport Image *SwirlImage(const Image *image,double degrees,
     swirl_image=DestroyImage(swirl_image);
   return(swirl_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -5437,7 +5415,7 @@ MagickExport Image *TintImage(const Image *image,const char *blend,
             (tint_traits == UndefinedPixelTrait))
           continue;
         if (((tint_traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(image,p) == 0))
+            (GetPixelWriteMask(image,p) == 0))
           {
             SetPixelChannel(tint_image,channel,p[i],q);
             continue;
@@ -5481,8 +5459,7 @@ MagickExport Image *TintImage(const Image *image,const char *blend,
     tint_image=DestroyImage(tint_image);
   return(tint_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -5583,8 +5560,7 @@ MagickExport Image *VignetteImage(const Image *image,const double radius,
     (void) TransformImageColorspace(vignette_image,image->colorspace,exception);
   return(vignette_image);
 }
-
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %

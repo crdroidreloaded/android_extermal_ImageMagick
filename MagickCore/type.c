@@ -17,13 +17,13 @@
 %                                 May 2001                                    %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -227,18 +227,18 @@ static SplayTreeInfo *AcquireTypeCache(const char *filename,
     if (font_path != (char *) NULL)
       {
         char
-          *option;
+          *xml;
 
         /*
           Search MAGICK_FONT_PATH.
         */
         (void) FormatLocaleString(path,MagickPathExtent,"%s%s%s",font_path,
           DirectorySeparator,filename);
-        option=FileToString(path,~0UL,exception);
-        if (option != (void *) NULL)
+        xml=FileToString(path,~0UL,exception);
+        if (xml != (void *) NULL)
           {
-            status&=LoadTypeCache(cache,option,path,0,exception);
-            option=DestroyString(option);
+            status&=LoadTypeCache(cache,xml,path,0,exception);
+            xml=DestroyString(xml);
           }
         font_path=DestroyString(font_path);
       }
@@ -1153,7 +1153,7 @@ static MagickBooleanType LoadTypeCache(SplayTreeInfo *cache,const char *xml,
                 {
                   char
                     path[MagickPathExtent],
-                    *xml;
+                    *file_xml;
 
                   ExceptionInfo
                     *sans_exception;
@@ -1168,12 +1168,13 @@ static MagickBooleanType LoadTypeCache(SplayTreeInfo *cache,const char *xml,
                   else
                     (void) ConcatenateMagickString(path,token,MagickPathExtent);
                   sans_exception=AcquireExceptionInfo();
-                  xml=FileToString(path,~0UL,sans_exception);
+                  file_xml=FileToString(path,~0UL,sans_exception);
                   sans_exception=DestroyExceptionInfo(sans_exception);
-                  if (xml != (char *) NULL)
+                  if (file_xml != (char *) NULL)
                     {
-                      status&=LoadTypeCache(cache,xml,path,depth+1,exception);
-                      xml=(char *) RelinquishMagickMemory(xml);
+                      status&=LoadTypeCache(cache,file_xml,path,depth+1,
+                        exception);
+                      file_xml=(char *) RelinquishMagickMemory(file_xml);
                     }
                 }
             }
@@ -1195,7 +1196,8 @@ static MagickBooleanType LoadTypeCache(SplayTreeInfo *cache,const char *xml,
       }
     if (type_info == (TypeInfo *) NULL)
       continue;
-    if (LocaleCompare(keyword,"/>") == 0)
+    if ((LocaleCompare(keyword,"/>") == 0) ||
+        (LocaleCompare(keyword,"</policy>") == 0))
       {
         status=AddValueToSplayTree(cache,type_info->name,type_info);
         if (status == MagickFalse)

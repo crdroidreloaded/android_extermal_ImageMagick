@@ -1,7 +1,7 @@
 // This may look like C code, but it is really -*- C++ -*-
 //
 // Copyright Bob Friesenhahn, 1999, 2000, 2001, 2002, 2003
-// Copyright Dirk Lemstra 2013-2016
+// Copyright Dirk Lemstra 2013-2017
 //
 // Implementation of Image
 //
@@ -265,8 +265,14 @@ Magick::Image::Image(const std::string &imageSpec_)
 
 Magick::Image::~Image()
 {
-  if (_imgRef->decrease() == 0)
-    delete _imgRef;
+  try
+  {
+    if (_imgRef->decrease() == 0)
+      delete _imgRef;
+  }
+  catch(Magick::Exception)
+  {
+  }
 
   _imgRef=(Magick::ImageRef *) NULL;
 }
@@ -321,27 +327,27 @@ bool Magick::Image::alpha(void) const
     return(false);
 }
 
-void Magick::Image::alphaColor(const Color &alphaColor_)
+void Magick::Image::matteColor(const Color &matteColor_)
 {
   modifyImage();
 
-  if (alphaColor_.isValid())
+  if (matteColor_.isValid())
     {
-      image()->alpha_color=alphaColor_;
-      options()->alphaColor(alphaColor_);
+      image()->matte_color=matteColor_;
+      options()->matteColor(matteColor_);
     }
   else
     {
       // Set to default matte color
       Color tmpColor("#BDBDBD");
-      image()->alpha_color=tmpColor;
-      options()->alphaColor(tmpColor);
+      image()->matte_color=tmpColor;
+      options()->matteColor(tmpColor);
     }
 }
 
-Magick::Color Magick::Image::alphaColor(void) const
+Magick::Color Magick::Image::matteColor(void) const
 {
-  return(Color(constImage()->alpha_color));
+  return(Color(constImage()->matte_color));
 }
 
 void Magick::Image::animationDelay(const size_t delay_)
@@ -1962,6 +1968,14 @@ std::string Magick::Image::artifact(const std::string &name_) const
   if (value)
     return(std::string(value));
   return(std::string());
+}
+
+void Magick::Image::attribute(const std::string name_,const char *value_)
+{
+  modifyImage();
+  GetPPException;
+  SetImageProperty(image(),name_.c_str(),value_,exceptionInfo);
+  ThrowImageException;
 }
 
 void Magick::Image::attribute(const std::string name_,const std::string value_)

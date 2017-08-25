@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -172,13 +172,15 @@ static void ConvertRGBToxyY(const double red,const double green,
   const double blue,double *low_x,double *low_y,double *cap_Y)
 {
   double
+    gamma,
     X,
     Y,
     Z;
 
   ConvertRGBToXYZ(red,green,blue,&X,&Y,&Z);
-  *low_x=X/(X+Y+Z);
-  *low_y=Y/(X+Y+Z);
+  gamma=PerceptibleReciprocal(X+Y+Z);
+  *low_x=gamma*X;
+  *low_y=gamma*Y;
   *cap_Y=Y;
 }
 
@@ -874,27 +876,27 @@ static MagickBooleanType sRGBTransformImage(Image *image,
       primary_info.z=(double) ScaleQuantumToMap(ScaleCharToQuantum(137));
       for (i=0; i <= (ssize_t) (0.018*MaxMap); i++)
       {
-        x_map[i].x=0.003962014134275617*i;
-        y_map[i].x=0.007778268551236748*i;
-        z_map[i].x=0.001510600706713781*i;
-        x_map[i].y=(-0.002426619775463276)*i;
-        y_map[i].y=(-0.004763965913702149)*i;
-        z_map[i].y=0.007190585689165425*i;
-        x_map[i].z=0.006927257754597858*i;
-        y_map[i].z=(-0.005800713697502058)*i;
-        z_map[i].z=(-0.0011265440570958)*i;
+        x_map[i].x=0.005382*i;
+        y_map[i].x=0.010566*i;
+        z_map[i].x=0.002052*i;
+        x_map[i].y=(-0.003296)*i;
+        y_map[i].y=(-0.006471)*i;
+        z_map[i].y=0.009768*i;
+        x_map[i].z=0.009410*i;
+        y_map[i].z=(-0.007880)*i;
+        z_map[i].z=(-0.001530)*i;
       }
       for ( ; i <= (ssize_t) MaxMap; i++)
       {
-        x_map[i].x=0.2201118963486454*(1.099*i-0.099);
-        y_map[i].x=0.4321260306242638*(1.099*i-0.099);
-        z_map[i].x=0.08392226148409894*(1.099*i-0.099);
-        x_map[i].y=(-0.1348122097479598)*(1.099*i-0.099);
-        y_map[i].y=(-0.2646647729834528)*(1.099*i-0.099);
-        z_map[i].y=0.3994769827314126*(1.099*i-0.099);
-        x_map[i].z=0.3848476530332144*(1.099*i-0.099);
-        y_map[i].z=(-0.3222618720834477)*(1.099*i-0.099);
-        z_map[i].z=(-0.06258578094976668)*(1.099*i-0.099);
+        x_map[i].x=0.298839*(1.099*i-0.099);
+        y_map[i].x=0.586811*(1.099*i-0.099);
+        z_map[i].x=0.114350*(1.099*i-0.099);
+        x_map[i].y=(-0.298839)*(1.099*i-0.099);
+        y_map[i].y=(-0.586811)*(1.099*i-0.099);
+        z_map[i].y=0.88600*(1.099*i-0.099);
+        x_map[i].z=0.70100*(1.099*i-0.099);
+        y_map[i].z=(-0.586811)*(1.099*i-0.099);
+        z_map[i].z=(-0.114350)*(1.099*i-0.099);
       }
       break;
     }
@@ -1081,6 +1083,12 @@ MagickExport MagickBooleanType SetImageColorspace(Image *image,
   MagickBooleanType
     status;
 
+  assert(image != (Image *) NULL);
+  assert(image->signature == MagickCoreSignature);
+  if (image->debug != MagickFalse)
+    (void) LogMagickEvent(TraceEvent,GetMagickModule(),"%s",image->filename);
+  assert(exception != (ExceptionInfo *) NULL);
+  assert(exception->signature == MagickCoreSignature);
   if (image->colorspace == colorspace)
     return(MagickTrue);
   image->colorspace=colorspace;
@@ -1119,7 +1127,7 @@ MagickExport MagickBooleanType SetImageColorspace(Image *image,
   image->type=type;
   return(status);
 }
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -1176,7 +1184,7 @@ MagickExport MagickBooleanType SetImageGray(Image *image,
   image->type=type;
   return(MagickTrue);
 }
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -1229,7 +1237,7 @@ MagickExport MagickBooleanType SetImageMonochrome(Image *image,
   image->type=BilevelType;
   return(MagickTrue);
 }
-
+
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
@@ -1389,13 +1397,15 @@ static inline void ConvertxyYToRGB(const double low_x,const double low_y,
   const double cap_Y,double *red,double *green,double *blue)
 {
   double
+    gamma,
     X,
     Y,
     Z;
 
-  X=cap_Y/low_y*low_x;
+  gamma=PerceptibleReciprocal(low_y);
+  X=gamma*cap_Y*low_x;
   Y=cap_Y;
-  Z=cap_Y/low_y*(1.0-low_x-low_y);
+  Z=gamma*cap_Y*(1.0-low_x-low_y);
   ConvertXYZToRGB(X,Y,Z,red,green,blue);
 }
 

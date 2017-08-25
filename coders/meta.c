@@ -17,13 +17,13 @@
 %                                 July 2001                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -400,10 +400,17 @@ static ssize_t parse8BIM(Image *ifile, Image *ofile)
             {
               if (brkused && next > 0)
                 {
+                  size_t
+                    codes_length;
+
                   char
                     *s = &token[next-1];
 
-                  len -= (ssize_t) convertHTMLcodes(s,strlen(s));
+                  codes_length=convertHTMLcodes(s, strlen(s));
+                  if ((ssize_t) codes_length > len)
+                    len=0;
+                  else
+                    len-=codes_length;
                 }
             }
 
@@ -696,10 +703,17 @@ static ssize_t parse8BIMW(Image *ifile, Image *ofile)
             {
               if (brkused && next > 0)
                 {
+                  size_t
+                    codes_length;
+
                   char
                     *s = &token[next-1];
 
-                  len -= (ssize_t) convertHTMLcodes(s,strlen(s));
+                  codes_length=convertHTMLcodes(s, strlen(s));
+                  if ((ssize_t) codes_length > len)
+                    len=0;
+                  else
+                    len-=codes_length;
                 }
             }
 
@@ -1396,14 +1410,14 @@ ModuleExport size_t RegisterMETAImage(void)
   entry->encoder=(EncodeImageHandler *) WriteMETAImage;
   entry->flags^=CoderAdjoinFlag;
   entry->flags|=CoderStealthFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("META","8BIMTEXT","Photoshop resource text format");
   entry->decoder=(DecodeImageHandler *) ReadMETAImage;
   entry->encoder=(EncodeImageHandler *) WriteMETAImage;
   entry->flags^=CoderAdjoinFlag;
   entry->flags|=CoderStealthFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("META","8BIMWTEXT",
     "Photoshop resource wide text format");
@@ -1411,70 +1425,70 @@ ModuleExport size_t RegisterMETAImage(void)
   entry->encoder=(EncodeImageHandler *) WriteMETAImage;
   entry->flags^=CoderAdjoinFlag;
   entry->flags|=CoderStealthFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("META","APP1","Raw application information");
   entry->decoder=(DecodeImageHandler *) ReadMETAImage;
   entry->encoder=(EncodeImageHandler *) WriteMETAImage;
   entry->flags^=CoderAdjoinFlag;
   entry->flags|=CoderStealthFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("META","APP1JPEG","Raw JPEG binary data");
   entry->decoder=(DecodeImageHandler *) ReadMETAImage;
   entry->encoder=(EncodeImageHandler *) WriteMETAImage;
   entry->flags^=CoderAdjoinFlag;
   entry->flags|=CoderStealthFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("META","EXIF","Exif digital camera binary data");
   entry->decoder=(DecodeImageHandler *) ReadMETAImage;
   entry->encoder=(EncodeImageHandler *) WriteMETAImage;
   entry->flags^=CoderAdjoinFlag;
   entry->flags|=CoderStealthFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("META","XMP","Adobe XML metadata");
   entry->decoder=(DecodeImageHandler *) ReadMETAImage;
   entry->encoder=(EncodeImageHandler *) WriteMETAImage;
   entry->flags^=CoderAdjoinFlag;
   entry->flags|=CoderStealthFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("META","ICM","ICC Color Profile");
   entry->decoder=(DecodeImageHandler *) ReadMETAImage;
   entry->encoder=(EncodeImageHandler *) WriteMETAImage;
   entry->flags^=CoderAdjoinFlag;
   entry->flags|=CoderStealthFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("META","ICC","ICC Color Profile");
   entry->decoder=(DecodeImageHandler *) ReadMETAImage;
   entry->encoder=(EncodeImageHandler *) WriteMETAImage;
   entry->flags^=CoderAdjoinFlag;
   entry->flags|=CoderStealthFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("META","IPTC","IPTC Newsphoto");
   entry->decoder=(DecodeImageHandler *) ReadMETAImage;
   entry->encoder=(EncodeImageHandler *) WriteMETAImage;
   entry->flags^=CoderAdjoinFlag;
   entry->flags|=CoderStealthFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("META","IPTCTEXT","IPTC Newsphoto text format");
   entry->decoder=(DecodeImageHandler *) ReadMETAImage;
   entry->encoder=(EncodeImageHandler *) WriteMETAImage;
   entry->flags^=CoderAdjoinFlag;
   entry->flags|=CoderStealthFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("META","IPTCWTEXT","IPTC Newsphoto text format");
   entry->decoder=(DecodeImageHandler *) ReadMETAImage;
   entry->encoder=(EncodeImageHandler *) WriteMETAImage;
   entry->flags^=CoderAdjoinFlag;
   entry->flags|=CoderStealthFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   return(MagickImageCoderSignature);
 }

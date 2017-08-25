@@ -17,13 +17,13 @@
 %                                December 1996                                %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -1025,6 +1025,33 @@ MagickPrivate MagickBooleanType NTGetModulePath(const char *module,char *path)
 %                                                                             %
 %                                                                             %
 %                                                                             %
++    N T G e t P a g e S i z e                                                %
+%                                                                             %
+%                                                                             %
+%                                                                             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  NTGetPageSize() returns the memory page size under Windows.
+%
+%  The format of the NTPageSize
+%
+%      NTPageSize()
+%
+*/
+MagickPrivate ssize_t NTGetPageSize(void)
+{
+  SYSTEM_INFO
+    system_info;
+
+   GetSystemInfo(&system_info);
+   return((ssize_t) system_info.dwPageSize);
+}
+
+/*
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                                             %
+%                                                                             %
+%                                                                             %
 %   N T G h o s t s c r i p t D L L                                           %
 %                                                                             %
 %                                                                             %
@@ -1757,8 +1784,8 @@ MagickPrivate DIR *NTOpenDirectory(const char *path)
     MagickPathExtent);
   if (length == 0)
     return((DIR *) NULL);
-  if(wcsncat(file_specification,(const wchar_t*) DirectorySeparator,
-       MagickPathExtent-wcslen(file_specification)-1) == (wchar_t*) NULL)
+  if (wcsncat(file_specification,(const wchar_t*) DirectorySeparator,
+        MagickPathExtent-wcslen(file_specification)-1) == (wchar_t*) NULL)
     return((DIR *) NULL);
   entry=(DIR *) AcquireMagickMemory(sizeof(DIR));
   if (entry != (DIR *) NULL)

@@ -1,4 +1,4 @@
-#  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
@@ -156,6 +156,7 @@ MAGICKCORE_CODER_SRCS = \
 	coders/pdb.c \
 	coders/pdf.c \
 	coders/pes.c \
+	coders/pgx.c \
 	coders/pict.c \
 	coders/pix.c \
 	coders/plasma.c \
@@ -284,6 +285,7 @@ coders_LTLIBRARIES = \
 	coders/pdb.la \
 	coders/pdf.la \
 	coders/pes.la \
+	coders/pgx.la \
 	coders/pict.la \
 	coders/pix.la \
 	coders/plasma.la \
@@ -465,7 +467,7 @@ coders_djvu_la_LIBADD      = $(MAGICKCORE_LIBS) $(DJVU_LIBS) $(JPEG_LIBS) $(LZMA
 coders_dng_la_SOURCES      = coders/dng.c
 coders_dng_la_CPPFLAGS     = $(MAGICK_CODER_CPPFLAGS)
 coders_dng_la_LDFLAGS      = $(MODULECOMMONFLAGS)
-coders_dng_la_LIBADD       = $(MAGICKCORE_LIBS)
+coders_dng_la_LIBADD       = $(MAGICKCORE_LIBS) $(RAW_LIBS)
 
 # DPS coder module
 coders_dps_la_SOURCES      = coders/dps.c
@@ -797,6 +799,12 @@ coders_pes_la_CPPFLAGS     = $(MAGICK_CODER_CPPFLAGS)
 coders_pes_la_LDFLAGS      = $(MODULECOMMONFLAGS)
 coders_pes_la_LIBADD       = $(MAGICKCORE_LIBS)
 
+# PGX coder module
+coders_pgx_la_SOURCES      = coders/pgx.c
+coders_pgx_la_CPPFLAGS     = $(MAGICK_CODER_CPPFLAGS)
+coders_pgx_la_LDFLAGS      = $(MODULECOMMONFLAGS)
+coders_pgx_la_LIBADD       = $(MAGICKCORE_LIBS)
+
 # PICT coder module
 coders_pict_la_SOURCES     = coders/pict.c
 coders_pict_la_CPPFLAGS    = $(MAGICK_CODER_CPPFLAGS)
@@ -1083,7 +1091,7 @@ coders_xps_la_LIBADD       = $(MAGICKCORE_LIBS) $(MUPDF_LIBS) $(FREETYPE_LIBS) $
 coders_xtrn_la_SOURCES     = coders/xtrn.c
 coders_xtrn_la_CPPFLAGS    = $(MAGICK_CODER_CPPFLAGS)
 coders_xtrn_la_LDFLAGS     = $(MODULECOMMONFLAGS)
-coders_xtrn_la_LIBADD      = $(MAGICKCORE_LIBS)
+coders_xtrn_la_LIBADD      = $(MAGICKCORE_LIBS) $(OLE_LIBS)
 
 # XWD coder module
 coders_xwd_la_SOURCES      = coders/xwd.c

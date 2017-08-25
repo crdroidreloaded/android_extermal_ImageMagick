@@ -22,13 +22,13 @@
 %                               October 1998                                  %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -2221,7 +2221,7 @@ static void ExportGrayAlphaQuantum(const Image *image,QuantumInfo *quantum_info,
 
       black=0x00;
       white=0x01;
-      if (quantum_info->min_is_white == MagickFalse)
+      if (quantum_info->min_is_white != MagickFalse)
         {
           black=0x01;
           white=0x00;
@@ -3920,7 +3920,7 @@ MagickExport size_t ExportQuantumPixels(const Image *image,
         register ssize_t
           i;
 
-        if (GetPixelReadMask(image,q) == 0)
+        if (GetPixelWriteMask(image,q) == 0)
           {
             q+=GetPixelChannels(image);
             continue;

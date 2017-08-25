@@ -17,13 +17,13 @@
 %                                 October 1996                                %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -72,6 +72,7 @@
 #include "MagickCore/pixel-private.h"
 #include "MagickCore/quantize.h"
 #include "MagickCore/quantum.h"
+#include "MagickCore/quantum-private.h"
 #include "MagickCore/random_.h"
 #include "MagickCore/random-private.h"
 #include "MagickCore/resize.h"
@@ -274,7 +275,7 @@ MagickExport Image *AdaptiveThresholdImage(const Image *image,
           (threshold_traits == UndefinedPixelTrait))
         continue;
       if (((threshold_traits & CopyPixelTrait) != 0) ||
-          (GetPixelReadMask(image,p) == 0))
+          (GetPixelWriteMask(image,p) == 0))
         {
           SetPixelChannel(threshold_image,channel,p[center+i],q);
           continue;
@@ -309,7 +310,7 @@ MagickExport Image *AdaptiveThresholdImage(const Image *image,
             (threshold_traits == UndefinedPixelTrait))
           continue;
         if (((threshold_traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(image,p) == 0))
+            (GetPixelWriteMask(image,p) == 0))
           {
             SetPixelChannel(threshold_image,channel,p[center+i],q);
             continue;
@@ -353,6 +354,407 @@ MagickExport Image *AdaptiveThresholdImage(const Image *image,
   if (status == MagickFalse)
     threshold_image=DestroyImage(threshold_image);
   return(threshold_image);
+}
+
+/*
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                                             %
+%                                                                             %
+%                                                                             %
+%     A u t o T h r e s o l d I m a g e                                       %
+%                                                                             %
+%                                                                             %
+%                                                                             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  AutoThresholdImage() automatically selects a threshold and replaces each
+%  pixel in the image with a black pixel if the image intentsity is less than
+%  the selected threshold otherwise white.
+%
+%  The format of the AutoThresholdImage method is:
+%
+%      MagickBooleanType AutoThresholdImage(Image *image,
+%        const AutoThresholdMethod method,ExceptionInfo *exception)
+%
+%  A description of each parameter follows:
+%
+%    o image: The image to auto-threshold.
+%
+%    o method: choose from Kapur, OTSU, or Triangle.
+%
+%    o exception: return any errors or warnings in this structure.
+%
+*/
+
+static double KapurThreshold(const Image *image,const double *histogram,
+  ExceptionInfo *exception)
+{
+#define MaxIntensity  255
+
+  double
+    *black_entropy,
+    *cumulative_histogram,
+    entropy,
+    epsilon,
+    maximum_entropy,
+    *white_entropy;
+
+  register ssize_t
+    i,
+    j;
+
+  size_t
+    threshold;
+
+  /*
+    Compute optimal threshold from the entopy of the histogram.
+  */
+  cumulative_histogram=(double *) AcquireQuantumMemory(MaxIntensity+1UL,
+    sizeof(*cumulative_histogram));
+  black_entropy=(double *) AcquireQuantumMemory(MaxIntensity+1UL,
+    sizeof(*black_entropy));
+  white_entropy=(double *) AcquireQuantumMemory(MaxIntensity+1UL,
+    sizeof(*white_entropy));
+  if ((cumulative_histogram == (double *) NULL) ||
+      (black_entropy == (double *) NULL) || (white_entropy == (double *) NULL))
+    {
+      if (white_entropy != (double *) NULL)
+        white_entropy=(double *) RelinquishMagickMemory(white_entropy);
+      if (black_entropy != (double *) NULL)
+        black_entropy=(double *) RelinquishMagickMemory(black_entropy);
+      if (cumulative_histogram != (double *) NULL)
+        cumulative_histogram=(double *)
+          RelinquishMagickMemory(cumulative_histogram);
+      (void) ThrowMagickException(exception,GetMagickModule(),
+        ResourceLimitError,"MemoryAllocationFailed","`%s'",image->filename);
+      return(-1.0);
+    }
+   /*
+     Entropy for black and white parts of the histogram.
+   */
+   cumulative_histogram[0]=histogram[0];
+   for (i=1; i <= MaxIntensity; i++)
+     cumulative_histogram[i]=cumulative_histogram[i-1]+histogram[i];
+   epsilon=MagickMinimumValue;
+   for (j=0; j <= MaxIntensity; j++)
+   {
+     /*
+       Black entropy.
+     */
+     black_entropy[j]=0.0;
+     if (cumulative_histogram[j] > epsilon)
+       {
+         entropy=0.0;
+         for (i=0; i <= j; i++)
+           if (histogram[i] > epsilon)
+             entropy-=histogram[i]/cumulative_histogram[j]*
+               log(histogram[i]/cumulative_histogram[j]);
+         black_entropy[j]=entropy;
+       }
+     /*
+       White entropy.
+     */
+     white_entropy[j]=0.0;
+     if ((1.0-cumulative_histogram[j]) > epsilon)
+       {
+         entropy=0.0;
+         for (i=j+1; i <= MaxIntensity; i++)
+           if (histogram[i] > epsilon)
+             entropy-=histogram[i]/(1.0-cumulative_histogram[j])*
+               log(histogram[i]/(1.0-cumulative_histogram[j]));
+         white_entropy[j]=entropy;
+       }
+   }
+  /*
+    Find histogram bin with maximum entropy.
+  */
+  maximum_entropy=black_entropy[0]+white_entropy[0];
+  threshold=0;
+  for (j=1; j <= MaxIntensity; j++)
+    if ((black_entropy[j]+white_entropy[j]) > maximum_entropy)
+      {
+        maximum_entropy=black_entropy[j]+white_entropy[j];
+        threshold=(ssize_t) j;
+      }
+  /*
+    Free resources.
+  */
+  white_entropy=(double *) RelinquishMagickMemory(white_entropy);
+  black_entropy=(double *) RelinquishMagickMemory(black_entropy);
+  cumulative_histogram=(double *) RelinquishMagickMemory(cumulative_histogram);
+  return(100.0*threshold/MaxIntensity);
+}
+
+static double OTSUThreshold(const Image *image,const double *histogram,
+  ExceptionInfo *exception)
+{
+  double
+    max_sigma,
+    *myu,
+    *omega,
+    *probability,
+    *sigma,
+    threshold;
+
+  register ssize_t
+    i;
+
+  /*
+    Compute optimal threshold from maximization of inter-class variance.
+  */
+  myu=(double *) AcquireQuantumMemory(MaxIntensity+1UL,sizeof(*myu));
+  omega=(double *) AcquireQuantumMemory(MaxIntensity+1UL,sizeof(*omega));
+  probability=(double *) AcquireQuantumMemory(MaxIntensity+1UL,
+    sizeof(*probability));
+  sigma=(double *) AcquireQuantumMemory(MaxIntensity+1UL,sizeof(*sigma));
+  if ((myu == (double *) NULL) || (omega == (double *) NULL) ||
+      (probability == (double *) NULL) || (sigma == (double *) NULL))
+    {
+      if (sigma != (double *) NULL)
+        sigma=(double *) RelinquishMagickMemory(sigma);
+      if (probability != (double *) NULL)
+        probability=(double *) RelinquishMagickMemory(probability);
+      if (omega != (double *) NULL)
+        omega=(double *) RelinquishMagickMemory(omega);
+      if (myu != (double *) NULL)
+        myu=(double *) RelinquishMagickMemory(myu);
+      (void) ThrowMagickException(exception,GetMagickModule(),
+        ResourceLimitError,"MemoryAllocationFailed","`%s'",image->filename);
+      return(-1.0);
+    }
+  /*
+    Calculate probability density.
+  */
+  for (i=0; i <= (ssize_t) MaxIntensity; i++)
+    probability[i]=histogram[i];
+  /*
+    Generate probability of graylevels and mean value for separation.
+  */
+  omega[0]=probability[0];
+  myu[0]=0.0;
+  for (i=0; i <= (ssize_t) MaxIntensity; i++)
+  {
+    omega[i]=omega[i-1]+probability[i];
+    myu[i]=myu[i-1]+i*probability[i];
+  }
+  /*
+    Sigma maximization: inter-class variance and compute optimal threshold.
+  */
+  threshold=0;
+  max_sigma=0.0;
+  for (i=0; i < (ssize_t) MaxIntensity; i++)
+  {
+    sigma[i]=0.0;
+    if ((omega[i] != 0.0) && (omega[i] != 1.0))
+      sigma[i]=pow(myu[MaxIntensity]*omega[i]-myu[i],2.0)/(omega[i]*(1.0-
+        omega[i]));
+    if (sigma[i] > max_sigma)
+      {
+        max_sigma=sigma[i];
+        threshold=(double) i;
+      }
+  }
+  /*
+    Free resources.
+  */
+  myu=(double *) RelinquishMagickMemory(myu);
+  omega=(double *) RelinquishMagickMemory(omega);
+  probability=(double *) RelinquishMagickMemory(probability);
+  sigma=(double *) RelinquishMagickMemory(sigma);
+  return(100.0*threshold/MaxIntensity);
+}
+
+static double TriangleThreshold(const Image *image,const double *histogram,
+  ExceptionInfo *exception)
+{
+  double
+    a,
+    b,
+    c,
+    count,
+    distance,
+    inverse_ratio,
+    max_distance,
+    segment,
+    x1,
+    x2,
+    y1,
+    y2;
+
+  register ssize_t
+    i;
+
+  ssize_t
+    end,
+    max,
+    start,
+    threshold;
+
+  /*
+    Compute optimal threshold with triangle algorithm.
+  */
+  start=0;  /* find start bin, first bin not zero count */
+  for (i=0; i <= (ssize_t) MaxIntensity; i++)
+    if (histogram[i] > 0.0)
+      {
+        start=i;
+        break;
+      }
+  end=0;  /* find end bin, last bin not zero count */
+  for (i=(ssize_t) MaxIntensity; i >= 0; i--)
+    if (histogram[i] > 0.0)
+      {
+        end=i;
+        break;
+      }
+  max=0;  /* find max bin, bin with largest count */
+  count=0.0;
+  for (i=0; i <= (ssize_t) MaxIntensity; i++)
+    if (histogram[i] > count)
+      {
+        max=i;
+        count=histogram[i];
+      }
+  /*
+    Compute threshold at split point.
+  */
+  x1=(double) max;
+  y1=histogram[max];
+  x2=(double) end;
+  if ((max-start) >= (end-max))
+    x2=(double) start;
+  y2=0.0;
+  a=y1-y2;
+  b=x2-x1;
+  c=(-1.0)*(a*x1+b*y1);
+  inverse_ratio=1.0/sqrt(a*a+b*b+c*c);
+  threshold=0;
+  max_distance=0.0;
+  if (x2 == (double) start)
+    for (i=start; i < max; i++)
+    {
+      segment=inverse_ratio*(a*i+b*histogram[i]+c);
+      distance=sqrt(segment*segment);
+      if ((distance > max_distance) && (segment > 0.0))
+        {
+          threshold=i;
+          max_distance=distance;
+        }
+    }
+  else
+    for (i=end; i > max; i--)
+    {
+      segment=inverse_ratio*(a*i+b*histogram[i]+c);
+      distance=sqrt(segment*segment);
+      if ((distance > max_distance) && (segment < 0.0))
+        {
+          threshold=i;
+          max_distance=distance;
+        }
+    }
+  return(100.0*threshold/MaxIntensity);
+}
+
+MagickExport MagickBooleanType AutoThresholdImage(Image *image,
+  const AutoThresholdMethod method,ExceptionInfo *exception)
+{
+  CacheView
+    *image_view;
+
+  char
+    property[MagickPathExtent];
+
+  double
+    gamma,
+    *histogram,
+    sum,
+    threshold;
+
+  MagickBooleanType
+    status;
+
+  register ssize_t
+    i;
+
+  ssize_t
+    y;
+
+  /*
+    Form histogram.
+  */
+  assert(image != (Image *) NULL);
+  assert(image->signature == MagickCoreSignature);
+  if (image->debug != MagickFalse)
+    (void) LogMagickEvent(TraceEvent,GetMagickModule(),"%s",image->filename);
+  histogram=(double *) AcquireQuantumMemory(MaxIntensity+1UL,
+    sizeof(*histogram));
+  if (histogram == (double *) NULL)
+    ThrowBinaryException(ResourceLimitError,"MemoryAllocationFailed",
+      image->filename);
+  status=MagickTrue;
+  (void) ResetMagickMemory(histogram,0,(MaxIntensity+1UL)*sizeof(*histogram));
+  image_view=AcquireVirtualCacheView(image,exception);
+  for (y=0; y < (ssize_t) image->rows; y++)
+  {
+    register const Quantum
+      *magick_restrict p;
+
+    register ssize_t
+      x;
+
+    p=GetCacheViewVirtualPixels(image_view,0,y,image->columns,1,exception);
+    if (p == (const Quantum *) NULL)
+      break;
+    for (x=0; x < (ssize_t) image->columns; x++)
+    {
+      double intensity = GetPixelIntensity(image,p);
+      histogram[ScaleQuantumToChar(ClampToQuantum(intensity))]++;
+      p+=GetPixelChannels(image);
+    }
+  }
+  image_view=DestroyCacheView(image_view);
+  /*
+    Normalize histogram.
+  */
+  sum=0.0;
+  for (i=0; i <= (ssize_t) MaxIntensity; i++)
+    sum+=histogram[i];
+  gamma=PerceptibleReciprocal(sum);
+  for (i=0; i <= (ssize_t) MaxIntensity; i++)
+    histogram[i]=gamma*histogram[i];
+  /*
+    Discover threshold from histogram.
+  */
+  switch (method)
+  {
+    case KapurThresholdMethod:
+    {
+      threshold=KapurThreshold(image,histogram,exception);
+      break;
+    }
+    case OTSUThresholdMethod:
+    default:
+    {
+      threshold=OTSUThreshold(image,histogram,exception);
+      break;
+    }
+    case TriangleThresholdMethod:
+    {
+      threshold=TriangleThreshold(image,histogram,exception);
+      break;
+    }
+  }
+  histogram=(double *) RelinquishMagickMemory(histogram);
+  if (threshold < 0.0)
+    status=MagickFalse;
+  if (status == MagickFalse)
+    return(MagickFalse);
+  /*
+    Threshold image.
+  */
+  (void) FormatLocaleString(property,MagickPathExtent,"%g%%",threshold);
+  (void) SetImageProperty(image,"auto-threshold:threshold",property,exception);
+  return(BilevelImage(image,QuantumRange*threshold/100.0,exception));
 }
 
 /*
@@ -455,7 +857,7 @@ MagickExport MagickBooleanType BilevelImage(Image *image,const double threshold,
       register ssize_t
         i;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -620,7 +1022,7 @@ MagickExport MagickBooleanType BlackThresholdImage(Image *image,
       register ssize_t
         i;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -756,7 +1158,7 @@ MagickExport MagickBooleanType ClampImage(Image *image,ExceptionInfo *exception)
       register ssize_t
         i;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -767,7 +1169,7 @@ MagickExport MagickBooleanType ClampImage(Image *image,ExceptionInfo *exception)
         PixelTrait traits=GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
-        q[i]=ClampPixel(q[i]);
+        q[i]=ClampPixel((MagickRealType) q[i]);
       }
       q+=GetPixelChannels(image);
     }
@@ -1348,12 +1750,17 @@ MagickExport MagickBooleanType OrderedDitherImage(Image *image,
     levels[i]=2.0;
   p=strchr((char *) threshold_map,',');
   if ((p != (char *) NULL) && (isdigit((int) ((unsigned char) *(++p))) != 0))
-    for (i=0; (*p != '\0') && (i < MaxPixelChannels); i++)
     {
       GetNextToken(p,&p,MagickPathExtent,token);
-      if (*token == ',')
+      for (i=0; (i < MaxPixelChannels); i++)
+        levels[i]=StringToDouble(token,(char **) NULL);
+      for (i=0; (*p != '\0') && (i < MaxPixelChannels); i++)
+      {
         GetNextToken(p,&p,MagickPathExtent,token);
-      levels[i]=StringToDouble(token,(char **) NULL);
+        if (*token == ',')
+          GetNextToken(p,&p,MagickPathExtent,token);
+        levels[i]=StringToDouble(token,(char **) NULL);
+      }
     }
   for (i=0; i < MaxPixelChannels; i++)
     if (fabs(levels[i]) >= 1)
@@ -1392,7 +1799,7 @@ MagickExport MagickBooleanType OrderedDitherImage(Image *image,
         n;
 
       n=0;
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -1407,8 +1814,11 @@ MagickExport MagickBooleanType OrderedDitherImage(Image *image,
         PixelTrait traits=GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
-        if (fabs(levels[n++]) < MagickEpsilon)
-          continue;
+        if (fabs(levels[n]) < MagickEpsilon)
+          {
+            n++;
+            continue;
+          }
         threshold=(ssize_t) (QuantumScale*q[i]*(levels[n]*(map->divisor-1)+1));
         level=threshold/(map->divisor-1);
         threshold-=level*(map->divisor-1);
@@ -1556,7 +1966,7 @@ MagickExport MagickBooleanType PerceptibleImage(Image *image,
       register ssize_t
         i;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -1693,7 +2103,7 @@ MagickExport MagickBooleanType RandomThresholdImage(Image *image,
       register ssize_t
         i;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -1867,7 +2277,7 @@ MagickExport MagickBooleanType WhiteThresholdImage(Image *image,
       register ssize_t
         i;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;

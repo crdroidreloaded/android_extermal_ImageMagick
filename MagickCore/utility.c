@@ -17,13 +17,13 @@
 %                              January 1993                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -899,22 +899,24 @@ MagickExport MagickBooleanType ExpandFilenames(int *number_arguments,
       if (IsPathDirectory(filename) <= 0)
         {
           char
-            path[MagickPathExtent];
+            file_path[MagickPathExtent];
 
-          *path='\0';
+          *file_path='\0';
           if (*magick != '\0')
             {
-              (void) ConcatenateMagickString(path,magick,MagickPathExtent);
-              (void) ConcatenateMagickString(path,":",MagickPathExtent);
+              (void) ConcatenateMagickString(file_path,magick,
+                MagickPathExtent);
+              (void) ConcatenateMagickString(file_path,":",MagickPathExtent);
             }
-          (void) ConcatenateMagickString(path,filename,MagickPathExtent);
+          (void) ConcatenateMagickString(file_path,filename,MagickPathExtent);
           if (*subimage != '\0')
             {
-              (void) ConcatenateMagickString(path,"[",MagickPathExtent);
-              (void) ConcatenateMagickString(path,subimage,MagickPathExtent);
-              (void) ConcatenateMagickString(path,"]",MagickPathExtent);
+              (void) ConcatenateMagickString(file_path,"[",MagickPathExtent);
+              (void) ConcatenateMagickString(file_path,subimage,
+                MagickPathExtent);
+              (void) ConcatenateMagickString(file_path,"]",MagickPathExtent);
             }
-          if (strlen(path) >= (MagickPathExtent-1))
+          if (strlen(file_path) >= (MagickPathExtent-1))
             ThrowFatalException(OptionFatalError,"FilenameTruncated");
           if (destroy != MagickFalse)
             {
@@ -922,7 +924,7 @@ MagickExport MagickBooleanType ExpandFilenames(int *number_arguments,
               vector[count]=DestroyString(vector[count]);
               destroy=MagickFalse;
             }
-          vector[count++]=ConstantString(path);
+          vector[count++]=ConstantString(file_path);
         }
     }
     filelist=(char **) RelinquishMagickMemory(filelist);
@@ -1113,13 +1115,13 @@ MagickPrivate ssize_t GetMagickPageSize(void)
     return(page_size);
 #if defined(MAGICKCORE_HAVE_SYSCONF) && defined(_SC_PAGE_SIZE)
   page_size=(ssize_t) sysconf(_SC_PAGE_SIZE);
-#else
-#if defined(MAGICKCORE_HAVE_GETPAGESIZE)
+#elif defined(MAGICKCORE_HAVE_GETPAGESIZE)
   page_size=(ssize_t) getpagesize();
-#endif
+#elif defined(MAGICKCORE_WINDOWS_SUPPORT)
+  page_size=NTGetPageSize();
 #endif
   if (page_size <= 0)
-    page_size=16384;
+    page_size=4096;
   return(page_size);
 }
 
@@ -1152,9 +1154,9 @@ MagickExport MagickBooleanType GetPathAttributes(const char *path,
 {
   MagickBooleanType
     status;
-  
+
   if (path == (const char *) NULL)
-    { 
+    {
       errno=EINVAL;
       return(MagickFalse);
     }
@@ -1233,7 +1235,7 @@ MagickExport void GetPathComponent(const char *path,PathType type,
         if (*p == '\0')
           break;
       }
-    if ((*p == ':') && (IsPathDirectory(path) < 0) &&
+    if ((p != component) && (*p == ':') && (IsPathDirectory(path) < 0) &&
         (IsPathAccessible(path) == MagickFalse))
       {
         /*
@@ -1565,19 +1567,6 @@ static int FileCompare(const void *x,const void *y)
 }
 #endif
 
-static inline int MagickReadDirectory(DIR *directory,struct dirent *entry,
-  struct dirent **result)
-{
-#if defined(MAGICKCORE_HAVE_READDIR_R)
-  return(readdir_r(directory,entry,result));
-#else
-  (void) entry;
-  errno=0;
-  *result=readdir(directory);
-  return(errno);
-#endif
-}
-
 MagickPrivate char **ListFiles(const char *directory,const char *pattern,
   size_t *number_entries)
 {
@@ -1828,7 +1817,9 @@ MagickPrivate MagickBooleanType ShredFile(const char *path)
 
   if ((path == (const char *) NULL) || (*path == '\0'))
     return(MagickFalse);
-  passes=GetEnvironmentValue("MAGICK_SHRED_PASSES");
+  passes=GetPolicyValue("system:shred");
+  if (passes == (char *) NULL)
+    passes=GetEnvironmentValue("MAGICK_SHRED_PASSES");
   if (passes == (char *) NULL)
     {
       /*

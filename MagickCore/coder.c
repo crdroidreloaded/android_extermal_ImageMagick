@@ -17,13 +17,13 @@
 %                                 May 2001                                    %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -83,7 +83,8 @@ static const CoderMapInfo
   CoderMap[] =
   {
     { "3FR", "DNG" },
-    { "8BIM", "META" },
+    { "3GP", "MPEG" },
+    { "3G2", "MPEG" },
     { "8BIMTEXT", "META" },
     { "8BIMWTEXT", "META" },
     { "AFM", "TTF" },
@@ -252,9 +253,6 @@ static const CoderMapInfo
     { "X3f", "DNG" },
     { "XMP", "META" },
     { "XTRNARRAY", "XTRN" },
-    { "XTRNBLOB", "XTRN" },
-    { "XTRNFILE", "XTRN" },
-    { "XTRNIMAGE", "XTRN" },
     { "XV", "VIFF" },
     { "Y", "RAW" },
     { "YCbCrA", "YCbCr" }
@@ -922,7 +920,8 @@ static MagickBooleanType LoadCoderCache(SplayTreeInfo *cache,const char *xml,
       }
     if (coder_info == (CoderInfo *) NULL)
       continue;
-    if (LocaleCompare(keyword,"/>") == 0)
+    if ((LocaleCompare(keyword,"/>") == 0) ||
+        (LocaleCompare(keyword,"</policy>") == 0))
       {
         status=AddValueToSplayTree(cache,ConstantString(coder_info->magick),
           coder_info);

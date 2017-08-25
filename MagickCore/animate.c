@@ -17,13 +17,13 @@
 %                                July 1992                                    %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -752,7 +752,11 @@ MagickExport void XAnimateBackgroundImage(Display *display,
     i;
 
   size_t
+    delay,
     number_scenes;
+
+  ssize_t
+    iterations;
 
   static XPixelInfo
     pixel;
@@ -769,9 +773,6 @@ MagickExport void XAnimateBackgroundImage(Display *display,
   unsigned int
     height,
     width;
-
-  size_t
-    delay;
 
   Window
     root_window;
@@ -1138,6 +1139,7 @@ MagickExport void XAnimateBackgroundImage(Display *display,
   */
   (void) XSelectInput(display,window_info.id,SubstructureNotifyMask);
   event.type=Expose;
+  iterations=0;
   do
   {
     for (scene=0; scene < (int) number_scenes; scene++)
@@ -1158,6 +1160,9 @@ MagickExport void XAnimateBackgroundImage(Display *display,
         image_list[scene]->ticks_per_second,1L);
       XDelay(display,resources.delay*(delay == 0 ? 10 : delay));
     }
+    iterations++;
+    if (iterations == (ssize_t) image_list[0]->iterations)
+      break;
   } while (event.type != DestroyNotify);
   (void) XSync(display,MagickFalse);
   image_list=(Image **) RelinquishMagickMemory(image_list);

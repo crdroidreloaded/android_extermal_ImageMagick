@@ -19,13 +19,13 @@
 %                               December 2001                                 %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -1120,8 +1120,8 @@ static void MSLStartElement(void *context,const xmlChar *tag,
                 {
                   if (LocaleCompare(keyword,"stack") == 0)
                     {
-                      option=ParseCommandOption(MagickBooleanOptions,MagickFalse,
-                        value);
+                      option=ParseCommandOption(MagickBooleanOptions,
+                        MagickFalse,value);
                       if (option < 0)
                         ThrowMSLException(OptionError,"UnrecognizedBooleanType",
                           value);
@@ -1280,8 +1280,8 @@ static void MSLStartElement(void *context,const xmlChar *tag,
                 {
                   if (LocaleCompare(keyword,"compose") == 0)
                     {
-                      option=ParseCommandOption(MagickComposeOptions,MagickFalse,
-                        value);
+                      option=ParseCommandOption(MagickComposeOptions,
+                        MagickFalse,value);
                       if (option < 0)
                         ThrowMSLException(OptionError,"UnrecognizedComposeType",
                           value);
@@ -1451,7 +1451,7 @@ static void MSLStartElement(void *context,const xmlChar *tag,
           break;
         }
         /*
-        NOTE: charcoal can have no attributes, since we use all the defaults!
+          NOTE: charcoal can have no attributes, since we use all the defaults!
         */
         if (attributes != (const xmlChar **) NULL)
         {
@@ -1998,8 +1998,8 @@ static void MSLStartElement(void *context,const xmlChar *tag,
                       MagickBooleanType
                         tile;
 
-                      option=ParseCommandOption(MagickBooleanOptions,MagickFalse,
-                        value);
+                      option=ParseCommandOption(MagickBooleanOptions,
+                        MagickFalse,value);
                       if (option < 0)
                         ThrowMSLException(OptionError,"UnrecognizedBooleanType",
                           value);
@@ -2122,8 +2122,8 @@ static void MSLStartElement(void *context,const xmlChar *tag,
                 {
                   if (LocaleCompare(keyword,"sharpen") == 0)
                     {
-                      option=ParseCommandOption(MagickBooleanOptions,MagickFalse,
-                        value);
+                      option=ParseCommandOption(MagickBooleanOptions,
+                        MagickFalse,value);
                       if (option < 0)
                         ThrowMSLException(OptionError,"UnrecognizedBooleanType",
                           value);
@@ -2431,8 +2431,8 @@ static void MSLStartElement(void *context,const xmlChar *tag,
                     }
                   if (LocaleCompare(keyword,"antialias") == 0)
                     {
-                      option=ParseCommandOption(MagickBooleanOptions,MagickFalse,
-                        value);
+                      option=ParseCommandOption(MagickBooleanOptions,
+                        MagickFalse,value);
                       if (option < 0)
                         ThrowMSLException(OptionError,"UnrecognizedBooleanType",
                           value);
@@ -2504,8 +2504,8 @@ static void MSLStartElement(void *context,const xmlChar *tag,
                     }
                   if (LocaleCompare(keyword,"gravity") == 0)
                     {
-                      option=ParseCommandOption(MagickGravityOptions,MagickFalse,
-                        value);
+                      option=ParseCommandOption(MagickGravityOptions,
+                        MagickFalse,value);
                       if (option < 0)
                         ThrowMSLException(OptionError,"UnrecognizedGravityType",
                           value);
@@ -3081,7 +3081,7 @@ static void MSLStartElement(void *context,const xmlChar *tag,
                   if (LocaleCompare(keyword, "fill") == 0)
                     {
                       (void) QueryColorCompliance(value,AllCompliance,
-                        &msl_info->image[n]->alpha_color,exception);
+                        &msl_info->image[n]->matte_color,exception);
                       break;
                     }
                   ThrowMSLException(OptionError,"UnrecognizedAttribute",
@@ -3620,8 +3620,8 @@ static void MSLStartElement(void *context,const xmlChar *tag,
                 {
                   if (LocaleCompare(keyword,"dither") == 0)
                     {
-                      option=ParseCommandOption(MagickBooleanOptions,MagickFalse,
-                        value);
+                      option=ParseCommandOption(MagickBooleanOptions,
+                        MagickFalse,value);
                       if (option < 0)
                         ThrowMSLException(OptionError,"UnrecognizedBooleanType",
                           value);
@@ -4086,8 +4086,8 @@ static void MSLStartElement(void *context,const xmlChar *tag,
                 {
                   if (LocaleCompare(keyword,"gray") == 0)
                     {
-                      option=ParseCommandOption(MagickBooleanOptions,MagickFalse,
-                        value);
+                      option=ParseCommandOption(MagickBooleanOptions,
+                        MagickFalse,value);
                       if (option < 0)
                         ThrowMSLException(OptionError,"UnrecognizedBooleanType",
                           value);
@@ -4525,8 +4525,8 @@ static void MSLStartElement(void *context,const xmlChar *tag,
                 {
                   if (LocaleCompare(keyword,"measure") == 0)
                     {
-                      option=ParseCommandOption(MagickBooleanOptions,MagickFalse,
-                        value);
+                      option=ParseCommandOption(MagickBooleanOptions,
+                        MagickFalse,value);
                       if (option < 0)
                         ThrowMSLException(OptionError,"UnrecognizedBooleanType",
                           value);
@@ -4628,8 +4628,8 @@ static void MSLStartElement(void *context,const xmlChar *tag,
                     }
                   if (LocaleCompare(keyword,"antialias") == 0)
                     {
-                      option=ParseCommandOption(MagickBooleanOptions,MagickFalse,
-                        value);
+                      option=ParseCommandOption(MagickBooleanOptions,
+                        MagickFalse,value);
                       if (option < 0)
                         ThrowMSLException(OptionError,"UnrecognizedBooleanType",
                           value);
@@ -4701,8 +4701,8 @@ static void MSLStartElement(void *context,const xmlChar *tag,
                     }
                   if (LocaleCompare(keyword,"gravity") == 0)
                     {
-                      option=ParseCommandOption(MagickGravityOptions,MagickFalse,
-                        value);
+                      option=ParseCommandOption(MagickGravityOptions,
+                        MagickFalse,value);
                       if (option < 0)
                         ThrowMSLException(OptionError,"UnrecognizedGravityType",
                           value);
@@ -4992,8 +4992,8 @@ static void MSLStartElement(void *context,const xmlChar *tag,
                 {
                   if (LocaleCompare(keyword,"raise") == 0)
                     {
-                      option=ParseCommandOption(MagickBooleanOptions,MagickFalse,
-                        value);
+                      option=ParseCommandOption(MagickBooleanOptions,
+                        MagickFalse,value);
                       if (option < 0)
                         ThrowMSLException(OptionError,"UnrecognizedNoiseType",
                           value);
@@ -5047,6 +5047,8 @@ static void MSLStartElement(void *context,const xmlChar *tag,
                     Image
                       *image;
 
+                    if (value == (char *) NULL)
+                      break;
                     (void) CopyMagickString(msl_info->image_info[n]->filename,
                       value,MagickPathExtent);
                     image=ReadImage(msl_info->image_info[n],exception);
@@ -6224,8 +6226,8 @@ static void MSLStartElement(void *context,const xmlChar *tag,
                     }
                   if (LocaleCompare(keyword,"gray") == 0)
                     {
-                      option=ParseCommandOption(MagickBooleanOptions,MagickFalse,
-                        value);
+                      option=ParseCommandOption(MagickBooleanOptions,
+                        MagickFalse,value);
                       if (option < 0)
                         ThrowMSLException(OptionError,"UnrecognizedNoiseType",
                           value);
@@ -7452,7 +7454,7 @@ static void MSLCharacters(void *context,const xmlChar *c,int length)
   else
     {
       msl_info->content=(char *) NULL;
-      if (~length >= (MagickPathExtent-1))
+      if (~(size_t) length >= (MagickPathExtent-1))
         msl_info->content=(char *) AcquireQuantumMemory(length+MagickPathExtent,
           sizeof(*msl_info->content));
       if (msl_info->content != (char *) NULL)
@@ -7978,12 +7980,6 @@ static MagickBooleanType SetMSLAttributes(MSLInfo *msl_info,const char *keyword,
               exception);
           break;
         }
-      if (LocaleCompare(keyword,"alpha-color") == 0)
-        {
-          (void) QueryColorCompliance(value,AllCompliance,
-            &image_info->alpha_color,exception);
-          break;
-        }
       if (LocaleCompare(keyword,"antialias") == 0)
         {
           ssize_t
@@ -8113,6 +8109,12 @@ static MagickBooleanType SetMSLAttributes(MSLInfo *msl_info,const char *keyword,
       if (LocaleCompare(keyword,"magick") == 0)
         {
           (void) CopyMagickString(image_info->magick,value,MagickPathExtent);
+          break;
+        }
+      if (LocaleCompare(keyword,"mattecolor") == 0)
+        {
+          (void) QueryColorCompliance(value,AllCompliance,
+            &image_info->matte_color,exception);
           break;
         }
       ThrowMSLException(OptionError,"UnrecognizedAttribute",keyword);

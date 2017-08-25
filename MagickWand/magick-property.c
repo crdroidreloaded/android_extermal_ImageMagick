@@ -23,13 +23,13 @@
 %                                 August 2003                                 %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -2851,6 +2851,43 @@ WandExport MagickBooleanType MagickSetSamplingFactors(MagickWand *wand,
     sampling_factors[i]);
   (void) ConcatenateString(&wand->image_info->sampling_factor,sampling_factor);
   return(MagickTrue);
+}
+
+/*
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                                             %
+%                                                                             %
+%                                                                             %
+%   M a g i c k S e t S e c u r i t y P o l i c y                             %
+%                                                                             %
+%                                                                             %
+%                                                                             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  MagickSetSecurityPolicy() sets the ImageMagick security policy.  It returns
+%  MagickFalse if the policy is already set or if the policy does not parse.
+%
+%  The format of the MagickSetAntialias method is:
+%
+%      MagickBooleanType MagickSetAntialias(MagickWand *wand,
+%        const char *policy)
+%
+%  A description of each parameter follows:
+%
+%    o wand: the magick wand.
+%
+%    o policy: the security policy in the XML format.
+%
+*/
+WandExport MagickBooleanType MagickSetSecurityPolicy(MagickWand *wand,
+  const char *policy)
+{
+  assert(wand != (MagickWand *) NULL);
+  assert(wand->signature == MagickWandSignature);
+  if (wand->debug != MagickFalse)
+    (void) LogMagickEvent(WandEvent,GetMagickModule(),"%s",wand->name);
+
+  return(SetMagickSecurityPolicy(policy,wand->exception));
 }
 
 /*

@@ -1,11 +1,11 @@
 /*
-  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization
+  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization
   dedicated to making software imaging solutions freely available.
 
   You may not use this file except in compliance with the License.
   obtain a copy of the License at
 
-    http://www.imagemagick.org/script/license.php
+    https://www.imagemagick.org/script/license.php
 
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,7 @@
 #ifndef MAGICKCORE_PIXEL_ACCESSOR_H
 #define MAGICKCORE_PIXEL_ACCESSOR_H
 
+#include <assert.h>
 #include "MagickCore/cache.h"
 #include "MagickCore/cache-view.h"
 #include "MagickCore/color.h"
@@ -34,7 +35,7 @@ extern "C" {
 static inline Quantum ClampPixel(const MagickRealType value)
 { 
   if (value < 0.0f)
-    return(0); 
+    return((Quantum) 0); 
   if (value >= (MagickRealType) QuantumRange)
     return((Quantum) QuantumRange);
 #if !defined(MAGICKCORE_HDRI_SUPPORT)
@@ -629,7 +630,7 @@ static inline void SetPixelBackgoundColor(const Image *magick_restrict image,
     i;
 
   for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
-    pixel[i]=0;
+    pixel[i]=(Quantum) 0;
   pixel[image->channel_map[RedPixelChannel].offset]=
     ClampToQuantum(image->background_color.red);
   pixel[image->channel_map[GreenPixelChannel].offset]=
@@ -691,6 +692,8 @@ static inline void SetPixelChannelAttributes(
   const Image *magick_restrict image,const PixelChannel channel,
   const PixelTrait traits,const ssize_t offset)
 {
+  assert((ssize_t) channel < MaxPixelChannels);
+  assert(offset < MaxPixelChannels);
   image->channel_map[offset].channel=channel;
   image->channel_map[channel].offset=offset;
   image->channel_map[channel].traits=traits;

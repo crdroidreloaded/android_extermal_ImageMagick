@@ -17,13 +17,13 @@
 %                                September 2002                               %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -1091,15 +1091,15 @@ static char *TranslateEvent(const char *module,const char *function,
       case 'm':
       {
         register const char
-          *p;
+          *r;
 
-        for (p=module+strlen(module)-1; p > module; p--)
-          if (*p == *DirectorySeparator)
+        for (r=module+strlen(module)-1; r > module; r--)
+          if (*r == *DirectorySeparator)
             {
-              p++;
+              r++;
               break;
             }
-        q+=CopyMagickString(q,p,extent);
+        q+=CopyMagickString(q,r,extent);
         break;
       }
       case 'n':

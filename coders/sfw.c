@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -260,7 +260,10 @@ static Image *ReadSFWImage(const ImageInfo *image_info,ExceptionInfo *exception)
   count=ReadBlob(image,(size_t) GetBlobSize(image),buffer);
   if ((count != (ssize_t) GetBlobSize(image)) ||
       (LocaleNCompare((char *) buffer,"SFW",3) != 0))
-    ThrowReaderException(CorruptImageError,"ImproperImageHeader");
+    {
+      buffer=(unsigned char *) RelinquishMagickMemory(buffer);
+      ThrowReaderException(CorruptImageError,"ImproperImageHeader");
+    }
   (void) CloseBlob(image);
   /*
     Find the start of the JFIF data
@@ -324,7 +327,7 @@ static Image *ReadSFWImage(const ImageInfo *image_info,ExceptionInfo *exception)
   (void) extent;
   extent=fwrite(HuffmanTable,1,sizeof(HuffmanTable)/sizeof(*HuffmanTable),file);
   extent=fwrite(offset+1,(size_t) (data-offset),1,file);
-  status=ferror(file) == -1 ? MagickFalse : MagickTrue;
+  status=ferror(file) != 0 ? MagickFalse : MagickTrue;
   (void) fclose(file);
   (void) close(unique_file);
   buffer=(unsigned char *) RelinquishMagickMemory(buffer);

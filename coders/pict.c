@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -1183,9 +1183,15 @@ static Image *ReadPICTImage(const ImageInfo *image_info,
                   }
               }
             if (ReadRectangle(image,&source) == MagickFalse)
-              ThrowReaderException(CorruptImageError,"ImproperImageHeader");
+              {
+                tile_image=DestroyImage(tile_image);
+                ThrowReaderException(CorruptImageError,"ImproperImageHeader");
+              }
             if (ReadRectangle(image,&destination) == MagickFalse)
-              ThrowReaderException(CorruptImageError,"ImproperImageHeader");
+              {
+                tile_image=DestroyImage(tile_image);
+                ThrowReaderException(CorruptImageError,"ImproperImageHeader");
+              }
             (void) ReadBlobMSBShort(image);
             if ((code == 0x91) || (code == 0x99) || (code == 0x9b))
               {
@@ -1217,7 +1223,10 @@ static Image *ReadPICTImage(const ImageInfo *image_info,
             for (y=0; y < (ssize_t) tile_image->rows; y++)
             {
               if (p > (pixels+extent+image->columns))
-                ThrowReaderException(CorruptImageError,"NotEnoughPixelData");
+                {
+                  tile_image=DestroyImage(tile_image);
+                  ThrowReaderException(CorruptImageError,"NotEnoughPixelData");
+                }
               q=QueueAuthenticPixels(tile_image,0,y,tile_image->columns,1,
                 exception);
               if (q == (Quantum *) NULL)
@@ -1253,8 +1262,11 @@ static Image *ReadPICTImage(const ImageInfo *image_info,
                       if (tile_image->alpha_trait == UndefinedPixelTrait)
                         {
                           if (p > (pixels+extent+2*image->columns))
-                            ThrowReaderException(CorruptImageError,
-                              "NotEnoughPixelData");
+                            {
+                              tile_image=DestroyImage(tile_image);
+                              ThrowReaderException(CorruptImageError,
+                                "NotEnoughPixelData");
+                            }
                           SetPixelRed(tile_image,ScaleCharToQuantum(*p),q);
                           SetPixelGreen(tile_image,ScaleCharToQuantum(
                             *(p+tile_image->columns)),q);
@@ -1264,8 +1276,11 @@ static Image *ReadPICTImage(const ImageInfo *image_info,
                       else
                         {
                           if (p > (pixels+extent+3*image->columns))
-                            ThrowReaderException(CorruptImageError,
-                              "NotEnoughPixelData");
+                            {
+                              tile_image=DestroyImage(tile_image);
+                              ThrowReaderException(CorruptImageError,
+                                "NotEnoughPixelData");
+                            }
                           SetPixelAlpha(tile_image,ScaleCharToQuantum(*p),q);
                           SetPixelRed(tile_image,ScaleCharToQuantum(
                             *(p+tile_image->columns)),q);
@@ -1334,8 +1349,11 @@ static Image *ReadPICTImage(const ImageInfo *image_info,
                 status=SetImageProfile(image,"icc",profile,exception);
                 profile=DestroyStringInfo(profile);
                 if (status == MagickFalse)
-                  ThrowReaderException(ResourceLimitError,
-                    "MemoryAllocationFailed");
+                  {
+                    info=(unsigned char *) RelinquishMagickMemory(info);
+                    ThrowReaderException(ResourceLimitError,
+                      "MemoryAllocationFailed");
+                  }
                 break;
               }
               case 0x1f2:
@@ -1344,8 +1362,11 @@ static Image *ReadPICTImage(const ImageInfo *image_info,
                 SetStringInfoDatum(profile,info);
                 status=SetImageProfile(image,"iptc",profile,exception);
                 if (status == MagickFalse)
-                  ThrowReaderException(ResourceLimitError,
-                    "MemoryAllocationFailed");
+                  {
+                    info=(unsigned char *) RelinquishMagickMemory(info);
+                    ThrowReaderException(ResourceLimitError,
+                      "MemoryAllocationFailed");
+                  }
                 profile=DestroyStringInfo(profile);
                 break;
               }
@@ -1521,14 +1542,14 @@ ModuleExport size_t RegisterPICTImage(void)
   entry->decoder=(DecodeImageHandler *) ReadPICTImage;
   entry->encoder=(EncodeImageHandler *) WritePICTImage;
   entry->flags^=CoderAdjoinFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderEncoderSeekableStreamFlag;
   entry->magick=(IsImageFormatHandler *) IsPICT;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("PICT","PICT","Apple Macintosh QuickDraw/PICT");
   entry->decoder=(DecodeImageHandler *) ReadPICTImage;
   entry->encoder=(EncodeImageHandler *) WritePICTImage;
   entry->flags^=CoderAdjoinFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderEncoderSeekableStreamFlag;
   entry->magick=(IsImageFormatHandler *) IsPICT;
   (void) RegisterMagickInfo(entry);
   return(MagickImageCoderSignature);

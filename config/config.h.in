@@ -106,6 +106,9 @@
 /* Define to 1 if you have the `clock' function. */
 #undef HAVE_CLOCK
 
+/* Define to 1 if you have the `clock_getres' function. */
+#undef HAVE_CLOCK_GETRES
+
 /* Define to 1 if you have clock_gettime. */
 #undef HAVE_CLOCK_GETTIME
 
@@ -389,9 +392,6 @@
 
 /* Define to 1 if you have the `rand_r' function. */
 #undef HAVE_RAND_R
-
-/* Define to 1 if you have the `readdir_r' function. */
-#undef HAVE_READDIR_R
 
 /* Define to 1 if you have the `readlink' function. */
 #undef HAVE_READLINK
@@ -840,6 +840,9 @@
 
 /* Define if you have RAQM library */
 #undef RAQM_DELEGATE
+
+/* Define if you have LIBRAW library */
+#undef RAW_R_DELEGATE
 
 /* Define as the return type of signal handlers (`int' or `void'). */
 #undef RETSIGTYPE

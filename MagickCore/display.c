@@ -17,13 +17,13 @@
 %                                July 1992                                    %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -8917,7 +8917,7 @@ static Image *XMagickCommand(Display *display,XResourceInfo *resource_info,
         exception);
       XSetCursorState(display,windows,MagickTrue);
       XCheckRefreshWindows(display,windows);
-      (void) QueryColorCompliance(color,AllCompliance,&(*image)->alpha_color,
+      (void) QueryColorCompliance(color,AllCompliance,&(*image)->matte_color,
         exception);
       (void) ParsePageGeometry(*image,geometry,&page_geometry,
         exception);
@@ -14731,7 +14731,8 @@ MagickExport Image *XDisplayImage(Display *display,XResourceInfo *resource_info,
           "%s: %s[scene: %.20g frames: %.20g]",MagickPackageName,filename,
           (double) display_image->scene,(double) GetImageListLength(
           display_image));
-      (void) CopyMagickString(windows->image.icon_name,filename,MagickPathExtent);
+      (void) CopyMagickString(windows->image.icon_name,filename,
+        MagickPathExtent);
     }
   if (resource_info->immutable)
     windows->image.immutable=MagickTrue;

@@ -17,13 +17,13 @@
 %                              January 2003                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -1316,7 +1316,7 @@ MagickExport MagickStatusType ParseMetaGeometry(const char *geometry,ssize_t *x,
   if ((flags & PercentValue) != 0)
     {
       MagickStatusType
-        flags;
+        percent_flags;
 
       PointInfo
         scale;
@@ -1324,12 +1324,12 @@ MagickExport MagickStatusType ParseMetaGeometry(const char *geometry,ssize_t *x,
       /*
         Geometry is a percentage of the image size.
       */
-      flags=ParseGeometry(geometry,&geometry_info);
+      percent_flags=ParseGeometry(geometry,&geometry_info);
       scale.x=geometry_info.rho;
-      if ((flags & RhoValue) == 0)
+      if ((percent_flags & RhoValue) == 0)
         scale.x=100.0;
       scale.y=geometry_info.sigma;
-      if ((flags & SigmaValue) == 0)
+      if ((percent_flags & SigmaValue) == 0)
         scale.y=scale.x;
       *width=(size_t) floor(scale.x*former_width/100.0+0.5);
       *height=(size_t) floor(scale.y*former_height/100.0+0.5);

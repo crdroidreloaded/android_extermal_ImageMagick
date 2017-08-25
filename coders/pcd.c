@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -540,12 +540,15 @@ static Image *ReadPCDImage(const ImageInfo *image_info,ExceptionInfo *exception)
   overview=LocaleNCompare((char *) header,"PCD_OPA",7) == 0;
   if ((count != (3*0x800)) ||
       ((LocaleNCompare((char *) header+0x800,"PCD",3) != 0) && (overview ==0)))
-    ThrowReaderException(CorruptImageError,"ImproperImageHeader");
+    {
+      header=(unsigned char *) RelinquishMagickMemory(header);
+      ThrowReaderException(CorruptImageError,"ImproperImageHeader");
+    }
   rotate=header[0x0e02] & 0x03;
   number_images=(header[10] << 8) | header[11];
+  header=(unsigned char *) RelinquishMagickMemory(header);
   if (number_images > 65535)
     ThrowReaderException(CorruptImageError,"ImproperImageHeader");
-  header=(unsigned char *) RelinquishMagickMemory(header);
   /*
     Determine resolution by scene specification.
   */
@@ -682,7 +685,7 @@ static Image *ReadPCDImage(const ImageInfo *image_info,ExceptionInfo *exception)
         }
         image->colorspace=YCCColorspace;
         if (LocaleCompare(image_info->magick,"PCDS") == 0)
-          SetImageColorspace(image,sRGBColorspace,exception);
+          (void) SetImageColorspace(image,sRGBColorspace,exception);
         if (j < (ssize_t) number_images)
           {
             /*
@@ -790,7 +793,7 @@ static Image *ReadPCDImage(const ImageInfo *image_info,ExceptionInfo *exception)
     if (image->previous == (Image *) NULL)
       {
         status=SetImageProgress(image,LoadImageTag,(MagickOffsetType) y,
-                image->rows);
+          image->rows);
         if (status == MagickFalse)
           break;
       }
@@ -836,7 +839,7 @@ static Image *ReadPCDImage(const ImageInfo *image_info,ExceptionInfo *exception)
   image->gamma=1.000f/2.200f;
   image->colorspace=YCCColorspace;
   if (LocaleCompare(image_info->magick,"PCDS") == 0)
-    SetImageColorspace(image,sRGBColorspace,exception);
+    (void) SetImageColorspace(image,sRGBColorspace,exception);
   return(GetFirstImageInList(image));
 }
 
@@ -873,13 +876,13 @@ ModuleExport size_t RegisterPCDImage(void)
   entry->encoder=(EncodeImageHandler *) WritePCDImage;
   entry->magick=(IsImageFormatHandler *) IsPCD;
   entry->flags^=CoderAdjoinFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("PCD","PCDS","Photo CD");
   entry->decoder=(DecodeImageHandler *) ReadPCDImage;
   entry->encoder=(EncodeImageHandler *) WritePCDImage;
   entry->flags^=CoderAdjoinFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   return(MagickImageCoderSignature);
 }
@@ -1046,7 +1049,7 @@ static MagickBooleanType WritePCDTile(Image *image,const char *page_geometry,
     {
       (void) WriteBlobByte(image,ScaleQuantumToChar(
         GetPixelGreen(tile_image,q)));
-      q++;
+      q+=GetPixelChannels(tile_image);
     }
     q=GetVirtualPixels(downsample_image,0,y >> 1,downsample_image->columns,1,
       exception);
@@ -1056,7 +1059,7 @@ static MagickBooleanType WritePCDTile(Image *image,const char *page_geometry,
     {
       (void) WriteBlobByte(image,ScaleQuantumToChar(
         GetPixelBlue(tile_image,q)));
-      q++;
+      q+=GetPixelChannels(tile_image);
     }
     status=SetImageProgress(image,SaveImageTag,y,tile_image->rows);
     if (status == MagickFalse)

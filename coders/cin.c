@@ -20,13 +20,13 @@
 %                               October 2003                                  %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -706,7 +706,10 @@ static Image *ReadCINImage(const ImageInfo *image_info,ExceptionInfo *exception)
       /*
         User defined data.
       */
-      profile=BlobToStringInfo((const unsigned char *) NULL,cin.file.user_length);
+      if (cin.file.user_length > GetBlobSize(image))
+        ThrowReaderException(CorruptImageError,"InsufficientImageDataInFile");
+      profile=BlobToStringInfo((const unsigned char *) NULL,
+        cin.file.user_length);
       if (profile == (StringInfo *) NULL)
         ThrowReaderException(ResourceLimitError,"MemoryAllocationFailed");
       offset+=ReadBlob(image,GetStringInfoLength(profile),
@@ -814,6 +817,7 @@ ModuleExport size_t RegisterCINImage(void)
   entry->decoder=(DecodeImageHandler *) ReadCINImage;
   entry->encoder=(EncodeImageHandler *) WriteCINImage;
   entry->magick=(IsImageFormatHandler *) IsCIN;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   entry->flags^=CoderAdjoinFlag;
   (void) RegisterMagickInfo(entry);
   return(MagickImageCoderSignature);

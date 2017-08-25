@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -168,7 +168,10 @@ static Image *ReadARTImage(const ImageInfo *image_info,ExceptionInfo *exception)
     pixels=(const unsigned char *) ReadBlobStream(image,length,
       GetQuantumPixels(quantum_info),&count);
     if (count != (ssize_t) length)
-      ThrowReaderException(CorruptImageError,"UnableToReadImageData");
+      {
+        quantum_info=DestroyQuantumInfo(quantum_info);
+        ThrowReaderException(CorruptImageError,"UnableToReadImageData");
+      }
     (void) ImportQuantumPixels(image,(CacheView *) NULL,quantum_info,
       GrayQuantum,pixels,exception);
     pixels=(const unsigned char *) ReadBlobStream(image,(size_t) (-(ssize_t)

@@ -17,13 +17,13 @@
 %                               December 2000                                 %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -827,7 +827,8 @@ static void ipa_device_close(wmfAPI * API)
 static void ipa_device_begin(wmfAPI * API)
 {
   char
-    comment[MagickPathExtent];
+    comment[MagickPathExtent],
+    *url;
 
   wmf_magick_t
     *ddata = WMF_MAGICK_GetData(API);
@@ -835,10 +836,12 @@ static void ipa_device_begin(wmfAPI * API)
   /* Make SVG output happy */
   (void) PushDrawingWand(WmfDrawingWand);
 
-  DrawSetViewbox(WmfDrawingWand, 0, 0, ddata->image->columns, ddata->image->rows );
+  DrawSetViewbox(WmfDrawingWand,0,0,ddata->image->columns,ddata->image->rows);
 
-  (void) FormatLocaleString(comment,MagickPathExtent,"Created by ImageMagick %s",
-    GetMagickVersion((size_t *) NULL));
+  url=GetMagickHomeURL();
+  (void) FormatLocaleString(comment,MagickPathExtent,
+    "Created by ImageMagick %s",url);
+  url=DestroyString(url);
   DrawComment(WmfDrawingWand,comment);
 
   /* Scale width and height to image */
@@ -2611,8 +2614,6 @@ static Image *ReadWMFImage(const ImageInfo *image_info,ExceptionInfo *exception)
   wmf_error = wmf_api_create(&API, wmf_options_flags, &wmf_api_options);
   if (wmf_error != wmf_E_None)
     {
-      if (API)
-        wmf_api_destroy(API);
       if (image->debug != MagickFalse)
         {
           (void) LogMagickEvent(CoderEvent,GetMagickModule(),
@@ -2620,6 +2621,8 @@ static Image *ReadWMFImage(const ImageInfo *image_info,ExceptionInfo *exception)
           (void) LogMagickEvent(CoderEvent,GetMagickModule(),
             "leave ReadWMFImage()");
         }
+      if (API)
+        wmf_api_destroy(API);
       ThrowReaderException(DelegateError,"UnableToInitializeWMFLibrary");
     }
 
@@ -2651,7 +2654,6 @@ static Image *ReadWMFImage(const ImageInfo *image_info,ExceptionInfo *exception)
     ipa_blob_tell,(void*)image);
   if (wmf_error != wmf_E_None)
     {
-      wmf_api_destroy(API);
       if (image->debug != MagickFalse)
         {
           (void) LogMagickEvent(CoderEvent,GetMagickModule(),
@@ -2659,6 +2661,7 @@ static Image *ReadWMFImage(const ImageInfo *image_info,ExceptionInfo *exception)
           (void) LogMagickEvent(CoderEvent,GetMagickModule(),
             "leave ReadWMFImage()");
         }
+      wmf_api_destroy(API);
       ThrowFileException(exception,FileOpenError,"UnableToOpenFile",
         image->filename);
       image=DestroyImageList(image);
@@ -2675,7 +2678,11 @@ static Image *ReadWMFImage(const ImageInfo *image_info,ExceptionInfo *exception)
   wmf_error=wmf_scan(API, 0, &bbox);
   if (wmf_error != wmf_E_None)
     {
-      wmf_api_destroy(API);
+      if (ddata->draw_info != (DrawInfo *) NULL)
+        {
+          DestroyDrawInfo(ddata->draw_info);
+          ddata->draw_info=(DrawInfo *)NULL;
+        }
       if (image->debug != MagickFalse)
         {
           (void) LogMagickEvent(CoderEvent,GetMagickModule(),
@@ -2683,6 +2690,7 @@ static Image *ReadWMFImage(const ImageInfo *image_info,ExceptionInfo *exception)
           (void) LogMagickEvent(CoderEvent,GetMagickModule(),
             "leave ReadWMFImage()");
         }
+      wmf_api_destroy(API);
       ThrowReaderException(DelegateError,"FailedToScanFile");
     }
 
@@ -2713,7 +2721,6 @@ static Image *ReadWMFImage(const ImageInfo *image_info,ExceptionInfo *exception)
   wmf_error=wmf_size(API,&wmf_width,&wmf_height);
   if (wmf_error != wmf_E_None)
     {
-      wmf_api_destroy(API);
       if (image->debug != MagickFalse)
         {
           (void) LogMagickEvent(CoderEvent,GetMagickModule(),
@@ -2721,6 +2728,7 @@ static Image *ReadWMFImage(const ImageInfo *image_info,ExceptionInfo *exception)
           (void) LogMagickEvent(CoderEvent,GetMagickModule(),
             "leave ReadWMFImage()");
         }
+      wmf_api_destroy(API);
       ThrowReaderException(DelegateError,"FailedToComputeOutputSize");
     }
 
@@ -2884,7 +2892,6 @@ static Image *ReadWMFImage(const ImageInfo *image_info,ExceptionInfo *exception)
   wmf_error = wmf_play(API, 0, &bbox);
   if (wmf_error != wmf_E_None)
     {
-      wmf_api_destroy(API);
       if (image->debug != MagickFalse)
         {
           (void) LogMagickEvent(CoderEvent,GetMagickModule(),
@@ -2892,6 +2899,7 @@ static Image *ReadWMFImage(const ImageInfo *image_info,ExceptionInfo *exception)
           (void) LogMagickEvent(CoderEvent,GetMagickModule(),
             "leave ReadWMFImage()");
         }
+      wmf_api_destroy(API);
       ThrowReaderException(DelegateError,"FailedToRenderFile");
     }
 
@@ -2949,7 +2957,7 @@ ModuleExport size_t RegisterWMFImage(void)
 #if defined(MAGICKCORE_SANS_DELEGATE) || defined(MAGICKCORE_WMF_DELEGATE)
   entry->decoder=ReadWMFImage;
 #endif
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("WMF","WMF","Windows Meta File");
 #if defined(MAGICKCORE_SANS_DELEGATE) || defined(MAGICKCORE_WMF_DELEGATE)

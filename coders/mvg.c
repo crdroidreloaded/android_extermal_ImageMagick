@@ -17,13 +17,13 @@
 %                                 April 2000                                  %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -184,9 +184,9 @@ static Image *ReadMVGImage(const ImageInfo *image_info,ExceptionInfo *exception)
     ThrowReaderException(OptionError,"MustSpecifyImageSize");
   draw_info=CloneDrawInfo(image_info,(DrawInfo *) NULL);
   draw_info->affine.sx=image->resolution.x == 0.0 ? 1.0 : image->resolution.x/
-    DefaultResolution;
+    96.0;
   draw_info->affine.sy=image->resolution.y == 0.0 ? 1.0 : image->resolution.y/
-    DefaultResolution;
+    96.0;
   image->columns=(size_t) (draw_info->affine.sx*image->columns);
   image->rows=(size_t) (draw_info->affine.sy*image->rows);
   status=SetImageExtent(image,image->columns,image->rows,exception);
@@ -215,6 +215,7 @@ static Image *ReadMVGImage(const ImageInfo *image_info,ExceptionInfo *exception)
   if (draw_info->primitive == (char *) NULL)
     ThrowReaderException(ResourceLimitError,"MemoryAllocationFailed");
   (void) DrawImage(image,draw_info,exception);
+  (void) SetImageArtifact(image,"MVG",draw_info->primitive);
   draw_info=DestroyDrawInfo(draw_info);
   (void) CloseBlob(image);
   return(GetFirstImageInList(image));
@@ -254,7 +255,6 @@ ModuleExport size_t RegisterMVGImage(void)
   entry->magick=(IsImageFormatHandler *) IsMVG;
   entry->format_type=ImplicitFormatType;
   entry->flags^=CoderAdjoinFlag;
-  entry->flags|=CoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   return(MagickImageCoderSignature);
 }

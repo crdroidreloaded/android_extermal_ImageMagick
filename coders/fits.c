@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -435,7 +435,8 @@ static Image *ReadFITSImage(const ImageInfo *image_info,
     (void) SetImageColorspace(image,GRAYColorspace,exception);
     if ((fits_info.min_data == 0.0) && (fits_info.max_data == 0.0))
       {
-        if (fits_info.zero == 0.0)
+        if ((fits_info.bits_per_pixel == -32) ||
+            (fits_info.bits_per_pixel == -64))
           (void) GetFITSPixelExtrema(image,fits_info.bits_per_pixel,
             &fits_info.min_data,&fits_info.max_data);
         else
@@ -541,14 +542,14 @@ ModuleExport size_t RegisterFITSImage(void)
   entry->encoder=(EncodeImageHandler *) WriteFITSImage;
   entry->magick=(IsImageFormatHandler *) IsFITS;
   entry->flags^=CoderAdjoinFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("FITS","FTS","Flexible Image Transport System");
   entry->decoder=(DecodeImageHandler *) ReadFITSImage;
   entry->encoder=(EncodeImageHandler *) WriteFITSImage;
   entry->magick=(IsImageFormatHandler *) IsFITS;
   entry->flags^=CoderAdjoinFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   return(MagickImageCoderSignature);
 }
@@ -610,8 +611,9 @@ static MagickBooleanType WriteFITSImage(const ImageInfo *image_info,
   Image *image,ExceptionInfo *exception)
 {
   char
+    *fits_info,
     header[FITSBlocksize],
-    *fits_info;
+    *url;
 
   MagickBooleanType
     status;
@@ -712,8 +714,9 @@ static MagickBooleanType WriteFITSImage(const ImageInfo *image_info,
       (void) strncpy(fits_info+offset,header,strlen(header));
       offset+=80;
     }
-  (void) FormatLocaleString(header,FITSBlocksize,"HISTORY %.72s",
-    GetMagickVersion((size_t *) NULL));
+  url=GetMagickHomeURL();
+  (void) FormatLocaleString(header,FITSBlocksize,"HISTORY %.72s",url);
+  url=DestroyString(url);
   (void) strncpy(fits_info+offset,header,strlen(header));
   offset+=80;
   (void) strncpy(header,"END",FITSBlocksize);

@@ -17,13 +17,13 @@
 %                               February 2002                                 %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -159,6 +159,7 @@ static Image *ReadCAPTIONImage(const ImageInfo *image_info,
     draw_info->gravity=(GravityType) ParseCommandOption(MagickGravityOptions,
       MagickFalse,gravity);
   split=MagickFalse;
+  status=MagickTrue;
   if (image->columns == 0)
     {
       text=AcquireString(caption);
@@ -189,7 +190,8 @@ static Image *ReadCAPTIONImage(const ImageInfo *image_info,
       image->rows=(size_t) ((i+1)*(metrics.ascent-metrics.descent+
         draw_info->interline_spacing+draw_info->stroke_width)+0.5);
     }
-  status=SetImageExtent(image,image->columns,image->rows,exception);
+  if (status != MagickFalse)
+    status=SetImageExtent(image,image->columns,image->rows,exception);
   if (status == MagickFalse)
     { 
       draw_info=DestroyDrawInfo(draw_info);
@@ -264,7 +266,7 @@ static Image *ReadCAPTIONImage(const ImageInfo *image_info,
           else
             high=draw_info->pointsize-0.5;
       }
-      draw_info->pointsize=(low+high)/2.0-0.5;
+      draw_info->pointsize=floor((low+high)/2.0-0.5);
     }
   /*
     Draw caption.
@@ -275,7 +277,7 @@ static Image *ReadCAPTIONImage(const ImageInfo *image_info,
     draw_info->direction == RightToLeftDirection ? image->columns-
     metrics.bounds.x2 : -metrics.bounds.x1,0.0),draw_info->gravity ==
     UndefinedGravity ? metrics.ascent : 0.0);
-  draw_info->geometry=AcquireString(geometry);
+  (void) CloneString(&draw_info->geometry,geometry);
   status=AnnotateImage(image,draw_info,exception);
   if (image_info->pointsize == 0.0)
     { 

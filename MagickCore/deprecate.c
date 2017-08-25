@@ -17,13 +17,13 @@
 %                                October 2002                                 %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -89,5 +89,37 @@
 #include "MagickCore/utility.h"
 
 #if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
+
+/*
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                                             %
+%                                                                             %
+%                                                                             %
++   G e t M a g i c k S e e k a b l e S t r e a m                             %
+%                                                                             %
+%                                                                             %
+%                                                                             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  GetMagickSeekableStream() returns MagickTrue if the magick supports a
+%  seekable stream.
+%
+%  The format of the GetMagickSeekableStream method is:
+%
+%      MagickBooleanType GetMagickSeekableStream(const MagickInfo *magick_info)
+%
+%  A description of each parameter follows:
+%
+%    o magick_info:  The magick info.
+%
+*/
+MagickExport MagickBooleanType GetMagickSeekableStream(
+  const MagickInfo *magick_info)
+{
+  assert(magick_info != (MagickInfo *) NULL);
+  assert(magick_info->signature == MagickCoreSignature);
+  return(((magick_info->flags & CoderSeekableStreamFlag) == 0) ? MagickFalse :
+    MagickTrue);
+}
 
 #endif

@@ -93,6 +93,7 @@ LOCAL_SRC_FILES += aai.c\
     pdb.c\
     pdf.c\
     pes.c\
+    pgx.c\
     pict.c\
     pix.c\
     plasma.c\

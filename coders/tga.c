@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -246,14 +246,10 @@ static Image *ReadTGAImage(const ImageInfo *image_info,
   if ((tga_info.image_type != TGAColormap) &&
       (tga_info.image_type != TGARLEColormap))
     image->depth=(size_t) ((tga_info.bits_per_pixel <= 8) ? 8 :
-      (tga_info.bits_per_pixel <= 16) ? 5 :
-      (tga_info.bits_per_pixel == 24) ? 8 :
-      (tga_info.bits_per_pixel == 32) ? 8 : 8);
+      (tga_info.bits_per_pixel <= 16) ? 5 : 8);
   else
     image->depth=(size_t) ((tga_info.colormap_size <= 8) ? 8 :
-      (tga_info.colormap_size <= 16) ? 5 :
-      (tga_info.colormap_size == 24) ? 8 :
-      (tga_info.colormap_size == 32) ? 8 : 8);
+      (tga_info.colormap_size <= 16) ? 5 : 8);
   if ((tga_info.image_type == TGAColormap) ||
       (tga_info.image_type == TGAMonochrome) ||
       (tga_info.image_type == TGARLEColormap) ||
@@ -275,6 +271,8 @@ static Image *ReadTGAImage(const ImageInfo *image_info,
 
           one=1;
           image->colors=one << tga_info.bits_per_pixel;
+          if (image->colors > ((~0UL)/sizeof(*image->colormap)))
+            ThrowReaderException(CorruptImageError,"ImproperImageHeader");
           if (AcquireImageColormap(image,image->colors,exception) == MagickFalse)
             ThrowReaderException(ResourceLimitError,"MemoryAllocationFailed");
         }
@@ -717,6 +715,7 @@ static MagickBooleanType WriteTGAImage(const ImageInfo *image_info,Image *image,
     compression;
 
   const char
+    *comment,
     *value;
 
   const double
@@ -775,9 +774,9 @@ static MagickBooleanType WriteTGAImage(const ImageInfo *image_info,Image *image,
     compression=image_info->compression;
   range=GetQuantumRange(5UL);
   tga_info.id_length=0;
-  value=GetImageProperty(image,"comment",exception);
-  if (value != (const char *) NULL)
-    tga_info.id_length=(unsigned char) MagickMin(strlen(value),255);
+  comment=GetImageProperty(image,"comment",exception);
+  if (comment != (const char *) NULL)
+    tga_info.id_length=(unsigned char) MagickMin(strlen(comment),255);
   tga_info.colormap_type=0;
   tga_info.colormap_index=0;
   tga_info.colormap_length=0;
@@ -861,7 +860,7 @@ static MagickBooleanType WriteTGAImage(const ImageInfo *image_info,Image *image,
   (void) WriteBlobByte(image,tga_info.bits_per_pixel);
   (void) WriteBlobByte(image,tga_info.attributes);
   if (tga_info.id_length != 0)
-    (void) WriteBlob(image,tga_info.id_length,(unsigned char *) value);
+    (void) WriteBlob(image,tga_info.id_length,(unsigned char *) comment);
   if (tga_info.colormap_type != 0)
     {
       unsigned char

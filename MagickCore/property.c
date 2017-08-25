@@ -17,13 +17,13 @@
 %                                 March 2000                                  %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -150,7 +150,7 @@ MagickExport MagickBooleanType CloneImageProperties(Image *image,
   image->compression=clone_image->compression;
   image->quality=clone_image->quality;
   image->depth=clone_image->depth;
-  image->alpha_color=clone_image->alpha_color;
+  image->matte_color=clone_image->matte_color;
   image->background_color=clone_image->background_color;
   image->border_color=clone_image->border_color;
   image->transparent_color=clone_image->transparent_color;
@@ -213,7 +213,7 @@ MagickExport MagickBooleanType CloneImageProperties(Image *image,
 %
 %  DefineImageProperty() associates an assignment string of the form
 %  "key=value" with an artifact or options. It is equivelent to
-%  SetImageProperty()
+%  SetImageProperty().
 %
 %  The format of the DefineImageProperty method is:
 %
@@ -665,6 +665,11 @@ static MagickBooleanType Get8BIMProperty(const Image *image,const char *key,
     if ((count & 0x01) == 0)
       (void) ReadPropertyByte(&info,&length);
     count=(ssize_t) ReadPropertyMSBLong(&info,&length);
+    if ((count < 0) || ((size_t) count > length))
+      {
+        length=0; 
+        continue;
+      }
     if ((*name != '\0') && (*name != '#'))
       if ((resource == (char *) NULL) || (LocaleCompare(name,resource) != 0))
         {
@@ -699,8 +704,8 @@ static MagickBooleanType Get8BIMProperty(const Image *image,const char *key,
         info+=count;
         length-=MagickMin(count,(ssize_t) length);
         if ((id <= 1999) || (id >= 2999))
-          (void) SetImageProperty((Image *) image,key,(const char *)
-            attribute,exception);
+          (void) SetImageProperty((Image *) image,key,(const char *) attribute,
+            exception);
         else
           {
             char
@@ -1761,6 +1766,9 @@ static MagickBooleanType GetXMPProperty(const Image *image,const char *property)
       description=GetXMLTreeChild(rdf,"rdf:Description");
       while (description != (XMLTreeInfo *) NULL)
       {
+        char
+          *xmp_namespace;
+
         node=GetXMLTreeChild(description,(const char *) NULL);
         while (node != (XMLTreeInfo *) NULL)
         {
@@ -1768,14 +1776,22 @@ static MagickBooleanType GetXMPProperty(const Image *image,const char *property)
           content=GetXMLTreeContent(node);
           if ((child == (XMLTreeInfo *) NULL) &&
               (SkipXMPValue(content) == MagickFalse))
-            (void) AddValueToSplayTree((SplayTreeInfo *) image->properties,
-              ConstantString(GetXMLTreeTag(node)),ConstantString(content));
+            {
+              xmp_namespace=ConstantString(GetXMLTreeTag(node));
+              (void) SubstituteString(&xmp_namespace,"exif:","xmp:");
+              (void) AddValueToSplayTree((SplayTreeInfo *) image->properties,
+                xmp_namespace,ConstantString(content));
+            }
           while (child != (XMLTreeInfo *) NULL)
           {
             content=GetXMLTreeContent(child);
             if (SkipXMPValue(content) == MagickFalse)
-              (void) AddValueToSplayTree((SplayTreeInfo *) image->properties,
-                ConstantString(GetXMLTreeTag(child)),ConstantString(content));
+              {
+                xmp_namespace=ConstantString(GetXMLTreeTag(node));
+                (void) SubstituteString(&xmp_namespace,"exif:","xmp:");
+                (void) AddValueToSplayTree((SplayTreeInfo *) image->properties,
+                  xmp_namespace,ConstantString(content));
+              }
             child=GetXMLTreeSibling(child);
           }
           node=GetXMLTreeSibling(node);
@@ -2030,7 +2046,7 @@ static char *TraceSVGClippath(const unsigned char *blob,size_t length,
     "<svg xmlns=\"http://www.w3.org/2000/svg\""
     " width=\"%.20g\" height=\"%.20g\">\n"
     "<g>\n"
-    "<path fill-rule=\"evenodd\" style=\"fill:#00000000;stroke:#00000000;"
+    "<path fill-rule=\"evenodd\" style=\"fill:#000000;stroke:#000000;"
     "stroke-width:0;stroke-antialiasing:false\" d=\"\n"),(double) columns,
     (double) rows);
   (void) ConcatenateString(&path,message);
@@ -3126,7 +3142,6 @@ MagickExport const char *GetMagickProperty(ImageInfo *image_info,
             image->units);
           break;
         }
-      if (LocaleCompare("copyright",property) == 0)
       break;
     }
     case 'v':
@@ -3585,13 +3600,69 @@ RestoreMSCWarning
             }
           continue;
         }
-      if (LocaleNCompare("pixel:",pattern,6) == 0)
+      if (LocaleNCompare("hex:",pattern,4) == 0)
         {
+          double
+            value;
+
           FxInfo
             *fx_info;
 
+          MagickStatusType
+            status;
+
+          PixelInfo
+            pixel;
+
+          /*
+            Pixel - color value calculator.
+          */
+          if (image == (Image *) NULL)
+            {
+              (void) ThrowMagickException(exception,GetMagickModule(),
+                OptionWarning,"NoImageForProperty","\"%%[%s]\"",pattern);
+              continue; /* else no image to retrieve artifact */
+            }
+          GetPixelInfo(image,&pixel);
+          fx_info=AcquireFxInfo(image,pattern+6,exception);
+          status=FxEvaluateChannelExpression(fx_info,RedPixelChannel,0,0,
+            &value,exception);
+          pixel.red=(double) QuantumRange*value;
+          status&=FxEvaluateChannelExpression(fx_info,GreenPixelChannel,0,0,
+            &value,exception);
+          pixel.green=(double) QuantumRange*value;
+          status&=FxEvaluateChannelExpression(fx_info,BluePixelChannel,0,0,
+            &value,exception);
+          pixel.blue=(double) QuantumRange*value;
+          if (image->colorspace == CMYKColorspace)
+            {
+              status&=FxEvaluateChannelExpression(fx_info,BlackPixelChannel,0,0,
+                &value,exception);
+              pixel.black=(double) QuantumRange*value;
+            }
+          status&=FxEvaluateChannelExpression(fx_info,AlphaPixelChannel,0,0,
+            &value,exception);
+          pixel.alpha=(double) QuantumRange*value;
+          fx_info=DestroyFxInfo(fx_info);
+          if (status != MagickFalse)
+            {
+              char
+                hex[MagickPathExtent],
+                name[MagickPathExtent];
+
+              (void) QueryColorname(image,&pixel,SVGCompliance,name,exception);
+              GetColorTuple(&pixel,MagickTrue,hex);
+              AppendString2Text(hex+1);
+            }
+          continue;
+        }
+      if (LocaleNCompare("pixel:",pattern,6) == 0)
+        {
           double
             value;
+
+          FxInfo
+            *fx_info;
 
           MagickStatusType
             status;
@@ -3634,8 +3705,7 @@ RestoreMSCWarning
               char
                 name[MagickPathExtent];
 
-              (void) QueryColorname(image,&pixel,SVGCompliance,name,
-                exception);
+              (void) QueryColorname(image,&pixel,SVGCompliance,name,exception);
               AppendString2Text(name);
             }
           continue;

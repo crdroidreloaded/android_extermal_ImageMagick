@@ -17,13 +17,13 @@
 %                                   July 1992                                 %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -125,11 +125,11 @@ MagickExport Image *BorderImage(const Image *image,
   clone_image=CloneImage(image,0,0,MagickTrue,exception);
   if (clone_image == (Image *) NULL)
     return((Image *) NULL);
-  clone_image->alpha_color=image->border_color;
+  clone_image->matte_color=image->border_color;
   border_image=FrameImage(clone_image,&frame_info,compose,exception);
   clone_image=DestroyImage(clone_image);
   if (border_image != (Image *) NULL)
-    border_image->alpha_color=image->alpha_color;
+    border_image->matte_color=image->matte_color;
   return(border_image);
 }
 
@@ -145,7 +145,7 @@ MagickExport Image *BorderImage(const Image *image,
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %  FrameImage() adds a simulated three-dimensional border around the image.
-%  The color of the border is defined by the alpha_color member of image.
+%  The color of the border is defined by the matte_color member of image.
 %  Members width and height of frame_info specify the border width of the
 %  vertical and horizontal sides of the frame.  Members inner and outer
 %  indicate the width of the inner and outer shadows of the frame.
@@ -232,7 +232,7 @@ MagickExport Image *FrameImage(const Image *image,const FrameInfo *frame_info,
   if ((IsPixelInfoGray(&frame_image->border_color) == MagickFalse) &&
       (IsGrayColorspace(frame_image->colorspace) != MagickFalse))
     (void) SetImageColorspace(frame_image,sRGBColorspace,exception);
-  if ((frame_image->alpha_color.alpha_trait != UndefinedPixelTrait) &&
+  if ((frame_image->matte_color.alpha_trait != UndefinedPixelTrait) &&
       (frame_image->alpha_trait == UndefinedPixelTrait))
     (void) SetImageAlpha(frame_image,OpaqueAlpha,exception);
   frame_image->page=image->page;
@@ -244,7 +244,7 @@ MagickExport Image *FrameImage(const Image *image,const FrameInfo *frame_info,
   /*
     Initialize 3D effects color.
   */
-  matte=image->alpha_color;
+  matte=image->matte_color;
   accentuate=matte;
   accentuate.red=(double) (QuantumScale*((QuantumRange-
     AccentuateModulate)*matte.red+(QuantumRange*AccentuateModulate)));
@@ -426,45 +426,10 @@ MagickExport Image *FrameImage(const Image *image,const FrameInfo *frame_info,
     /*
       Set frame interior pixels.
     */
+    for (x=0; x < (ssize_t) image->columns; x++)
     {
-      register const Quantum
-        *p;
-
-      p=GetCacheViewVirtualPixels(image_view,0,y,image->columns,1,exception);
-      if (p == (const Quantum *) NULL)
-        {
-          status=MagickFalse;
-          continue;
-        }
-      for (x=0; x < (ssize_t) image->columns; x++)
-      {
-        register ssize_t
-          i;
-
-        if (GetPixelReadMask(image,q) == 0)
-          {
-            SetPixelBackgoundColor(frame_image,q);
-            p+=GetPixelChannels(image);
-            q+=GetPixelChannels(frame_image);
-            continue;
-          }
-        for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
-        {
-          PixelChannel channel=GetPixelChannelChannel(image,i);
-          PixelTrait traits=GetPixelChannelTraits(image,channel);
-          PixelTrait frame_traits=GetPixelChannelTraits(frame_image,channel);
-          if ((traits == UndefinedPixelTrait) ||
-              (frame_traits == UndefinedPixelTrait))
-            continue;
-          SetPixelChannel(frame_image,channel,p[i],q);
-        }
-        SetPixelRed(frame_image,GetPixelRed(image,p),q);
-        SetPixelGreen(frame_image,GetPixelGreen(image,p),q);
-        SetPixelBlue(frame_image,GetPixelBlue(image,p),q);
-        SetPixelAlpha(frame_image,GetPixelAlpha(image,p),q);
-        p+=GetPixelChannels(image);
-        q+=GetPixelChannels(frame_image);
-      }
+      SetPixelViaPixelInfo(frame_image,&frame_image->border_color,q);
+      q+=GetPixelChannels(frame_image);
     }
     for (x=0; x < (ssize_t) frame_info->inner_bevel; x++)
     {
@@ -714,7 +679,7 @@ MagickExport MagickBooleanType RaiseImage(Image *image,
       }
     for (x=0; x < y; x++)
     {
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -732,7 +697,7 @@ MagickExport MagickBooleanType RaiseImage(Image *image,
     }
     for ( ; x < (ssize_t) (image->columns-y); x++)
     {
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -750,7 +715,7 @@ MagickExport MagickBooleanType RaiseImage(Image *image,
     }
     for ( ; x < (ssize_t) image->columns; x++)
     {
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -804,7 +769,7 @@ MagickExport MagickBooleanType RaiseImage(Image *image,
       }
     for (x=0; x < (ssize_t) raise_info->width; x++)
     {
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -824,7 +789,7 @@ MagickExport MagickBooleanType RaiseImage(Image *image,
       q+=GetPixelChannels(image);
     for ( ; x < (ssize_t) image->columns; x++)
     {
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -878,7 +843,7 @@ MagickExport MagickBooleanType RaiseImage(Image *image,
       }
     for (x=0; x < (ssize_t) (image->rows-y); x++)
     {
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -909,7 +874,7 @@ MagickExport MagickBooleanType RaiseImage(Image *image,
     }
     for ( ; x < (ssize_t) image->columns; x++)
     {
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;

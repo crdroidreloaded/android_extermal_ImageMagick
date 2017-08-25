@@ -17,13 +17,13 @@
 %                               January 2010                                  %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -507,7 +507,7 @@ MagickExport KernelInfo *AcquireKernelInfo(const char *kernel_string,
       if (kernel_cache == (char *) NULL)
         return((KernelInfo *) NULL);
       p=(const char *) kernel_cache;
-    }    
+    }
   kernel=NULL;
   while (GetNextToken(p,(const char **) NULL,MagickPathExtent,token), *token != '\0')
   {
@@ -2712,7 +2712,7 @@ static ssize_t MorphologyPrimitive(const Image *image,Image *morphology_image,
                 (morphology_traits == UndefinedPixelTrait))
               continue;
             if (((traits & CopyPixelTrait) != 0) ||
-                (GetPixelReadMask(image,p+center) == 0))
+                (GetPixelWriteMask(image,p+center) == 0))
               {
                 SetPixelChannel(morphology_image,channel,p[center+i],q);
                 continue;
@@ -2863,7 +2863,7 @@ static ssize_t MorphologyPrimitive(const Image *image,Image *morphology_image,
             (morphology_traits == UndefinedPixelTrait))
           continue;
         if (((traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(image,p+center) == 0))
+            (GetPixelWriteMask(image,p+center) == 0))
           {
             SetPixelChannel(morphology_image,channel,p[center+i],q);
             continue;
@@ -2875,19 +2875,17 @@ static ssize_t MorphologyPrimitive(const Image *image,Image *morphology_image,
         switch (method)
         {
           case ConvolveMorphology: pixel=bias; break;
-          case HitAndMissMorphology: pixel=(double) QuantumRange; break;
-          case ThinningMorphology: pixel=(double) QuantumRange; break;
-          case ThickenMorphology: pixel=(double) QuantumRange; break;
-          case ErodeMorphology: pixel=(double) QuantumRange; break;
-          case DilateMorphology: pixel=0.0; break;
+          case DilateMorphology:
           case ErodeIntensityMorphology:
-          case DilateIntensityMorphology:
-          case IterativeDistanceMorphology:
+          {
+            pixel=0.0;
+            break;
+          }
+          default:
           {
             pixel=(double) p[center+i];
             break;
           }
-          default: pixel=0; break;
         }
         gamma=1.0;
         switch (method)
@@ -3344,7 +3342,7 @@ static ssize_t MorphologyPrimitiveDirect(Image *image,
         if (traits == UndefinedPixelTrait)
           continue;
         if (((traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(image,p+center) == 0))
+            (GetPixelWriteMask(image,p+center) == 0))
           continue;
         pixels=p;
         pixel=(double) QuantumRange;
@@ -3505,7 +3503,7 @@ static ssize_t MorphologyPrimitiveDirect(Image *image,
         if (traits == UndefinedPixelTrait)
           continue;
         if (((traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(image,p+center) == 0))
+            (GetPixelWriteMask(image,p+center) == 0))
           continue;
         pixels=p;
         pixel=(double) QuantumRange;

@@ -17,13 +17,13 @@
 %                               September 2002                                %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -66,6 +66,11 @@
 #include "MagickCore/token.h"
 #include "MagickCore/utility.h"
 #include "MagickCore/utility-private.h"
+
+/*
+  Define declarations.
+*/
+#define MagickPathTemplate "XXXXXXXXXXXX"
 
 /*
   Typedef declarations.
@@ -190,8 +195,8 @@ MagickExport MagickBooleanType AcquireMagickResource(const ResourceType type,
       status=(resource_info.area_limit == MagickResourceInfinity) ||
         (size < limit) ? MagickTrue : MagickFalse;
       (void) FormatMagickSize((MagickSizeType) resource_info.area,MagickFalse,
-        "B",MagickFormatExtent,resource_current);
-      (void) FormatMagickSize(resource_info.area_limit,MagickFalse,"B",
+        "P",MagickFormatExtent,resource_current);
+      (void) FormatMagickSize(resource_info.area_limit,MagickFalse,"P",
         MagickFormatExtent,resource_limit);
       break;
     }
@@ -403,8 +408,8 @@ MagickExport MagickBooleanType GetPathTemplate(char *path)
   struct stat
     attributes;
 
-  (void) FormatLocaleString(path,MagickPathExtent,"magick-%.20gXXXXXXXXXXXX",
-    (double) getpid());
+  (void) FormatLocaleString(path,MagickPathExtent,"magick-%.20g"
+    MagickPathTemplate,(double) getpid());
   exception=AcquireExceptionInfo();
   directory=(char *) GetImageRegistry(StringRegistryType,"temporary-path",
     exception);
@@ -431,9 +436,12 @@ MagickExport MagickBooleanType GetPathTemplate(char *path)
 #endif
   if (directory == (char *) NULL)
     return(MagickTrue);
-  value=GetPolicyValue("temporary-path");
+  value=GetPolicyValue("resource:temporary-path");
   if (value != (char *) NULL)
-    (void) CloneString(&directory,value);
+    {
+      (void) CloneString(&directory,value);
+      value=DestroyString(value);
+    }
   if (strlen(directory) > (MagickPathExtent-25))
     {
       directory=DestroyString(directory);
@@ -447,11 +455,11 @@ MagickExport MagickBooleanType GetPathTemplate(char *path)
     }
   if (directory[strlen(directory)-1] == *DirectorySeparator)
     (void) FormatLocaleString(path,MagickPathExtent,
-      "%smagick-%.20gXXXXXXXXXXXX",directory,(double) getpid());
+      "%smagick-%.20g" MagickPathTemplate,directory,(double) getpid());
   else
     (void) FormatLocaleString(path,MagickPathExtent,
-      "%s%smagick-%.20gXXXXXXXXXXXX",directory,DirectorySeparator,(double)
-      getpid());
+      "%s%smagick-%.20g" MagickPathTemplate,directory,DirectorySeparator,
+      (double) getpid());
   directory=DestroyString(directory);
 #if defined(MAGICKCORE_WINDOWS_SUPPORT)
   {
@@ -516,7 +524,7 @@ MagickExport int AcquireUniqueFileResource(char *path)
     */
     (void) GetPathTemplate(path);
     key=GetRandomKey(random_info,6);
-    p=path+strlen(path)-12;
+    p=path+strlen(path)-strlen(MagickPathTemplate);
     datum=GetStringInfoDatum(key);
     for (i=0; i < (ssize_t) GetStringInfoLength(key); i++)
     {
@@ -537,8 +545,8 @@ MagickExport int AcquireUniqueFileResource(char *path)
         break;
       }
 #endif
-    key=GetRandomKey(random_info,12);
-    p=path+strlen(path)-12;
+    key=GetRandomKey(random_info,strlen(MagickPathTemplate));
+    p=path+strlen(path)-strlen(MagickPathTemplate);
     datum=GetStringInfoDatum(key);
     for (i=0; i < (ssize_t) GetStringInfoLength(key); i++)
     {
@@ -792,7 +800,7 @@ MagickExport MagickBooleanType ListMagickResourceInfo(FILE *file,
     MagickFormatExtent,width_limit);
   (void) FormatMagickSize(resource_info.height_limit,MagickFalse,"P",
     MagickFormatExtent,height_limit);
-  (void) FormatMagickSize(resource_info.area_limit,MagickFalse,"B",
+  (void) FormatMagickSize(resource_info.area_limit,MagickFalse,"P",
     MagickFormatExtent,area_limit);
   (void) FormatMagickSize(resource_info.memory_limit,MagickTrue,"B",
     MagickFormatExtent,memory_limit);
@@ -1241,7 +1249,7 @@ MagickExport MagickBooleanType SetMagickResourceLimit(const ResourceType type,
     case WidthResource:
     {
       resource_info.width_limit=limit;
-      value=GetPolicyValue("width");
+      value=GetPolicyValue("resource:width");
       if (value != (char *) NULL)
         resource_info.width_limit=MagickMin(limit,StringToSizeType(value,
           100.0));
@@ -1250,7 +1258,7 @@ MagickExport MagickBooleanType SetMagickResourceLimit(const ResourceType type,
     case HeightResource:
     {
       resource_info.height_limit=limit;
-      value=GetPolicyValue("height");
+      value=GetPolicyValue("resource:height");
       if (value != (char *) NULL)
         resource_info.height_limit=MagickMin(limit,StringToSizeType(value,
           100.0));
@@ -1259,7 +1267,7 @@ MagickExport MagickBooleanType SetMagickResourceLimit(const ResourceType type,
     case AreaResource:
     {
       resource_info.area_limit=limit;
-      value=GetPolicyValue("area");
+      value=GetPolicyValue("resource:area");
       if (value != (char *) NULL)
         resource_info.area_limit=MagickMin(limit,StringToSizeType(value,100.0));
       break;
@@ -1267,7 +1275,7 @@ MagickExport MagickBooleanType SetMagickResourceLimit(const ResourceType type,
     case MemoryResource:
     {
       resource_info.memory_limit=limit;
-      value=GetPolicyValue("memory");
+      value=GetPolicyValue("resource:memory");
       if (value != (char *) NULL)
         resource_info.memory_limit=MagickMin(limit,StringToSizeType(value,
           100.0));
@@ -1276,7 +1284,7 @@ MagickExport MagickBooleanType SetMagickResourceLimit(const ResourceType type,
     case MapResource:
     {
       resource_info.map_limit=limit;
-      value=GetPolicyValue("map");
+      value=GetPolicyValue("resource:map");
       if (value != (char *) NULL)
         resource_info.map_limit=MagickMin(limit,StringToSizeType(value,100.0));
       break;
@@ -1284,7 +1292,7 @@ MagickExport MagickBooleanType SetMagickResourceLimit(const ResourceType type,
     case DiskResource:
     {
       resource_info.disk_limit=limit;
-      value=GetPolicyValue("disk");
+      value=GetPolicyValue("resource:disk");
       if (value != (char *) NULL)
         resource_info.disk_limit=MagickMin(limit,StringToSizeType(value,100.0));
       break;
@@ -1292,7 +1300,7 @@ MagickExport MagickBooleanType SetMagickResourceLimit(const ResourceType type,
     case FileResource:
     {
       resource_info.file_limit=limit;
-      value=GetPolicyValue("file");
+      value=GetPolicyValue("resource:file");
       if (value != (char *) NULL)
         resource_info.file_limit=MagickMin(limit,StringToSizeType(value,100.0));
       break;
@@ -1300,31 +1308,30 @@ MagickExport MagickBooleanType SetMagickResourceLimit(const ResourceType type,
     case ThreadResource:
     {
       resource_info.thread_limit=limit;
-      value=GetPolicyValue("thread");
+      value=GetPolicyValue("resource:thread");
       if (value != (char *) NULL)
         resource_info.thread_limit=MagickMin(limit,StringToSizeType(value,
           100.0));
       if (resource_info.thread_limit > GetOpenMPMaximumThreads())
         resource_info.thread_limit=GetOpenMPMaximumThreads();
-      else if (resource_info.thread_limit == 0)
-        resource_info.thread_limit=1;
+      else
+        if (resource_info.thread_limit == 0)
+          resource_info.thread_limit=1;
       break;
     }
     case ThrottleResource:
     {
       resource_info.throttle_limit=limit;
-      value=GetPolicyValue("throttle");
+      value=GetPolicyValue("resource:throttle");
       if (value != (char *) NULL)
-        resource_info.throttle_limit=MagickMin(limit,StringToSizeType(value,
+        resource_info.throttle_limit=MagickMax(limit,StringToSizeType(value,
           100.0));
-      if (resource_info.throttle_limit > GetOpenMPMaximumThreads())
-        resource_info.throttle_limit=GetOpenMPMaximumThreads();
       break;
     }
     case TimeResource:
     {
       resource_info.time_limit=limit;
-      value=GetPolicyValue("time");
+      value=GetPolicyValue("resource:time");
       if (value != (char *) NULL)
         resource_info.time_limit=MagickMin(limit,StringToSizeType(value,100.0));
       ResetPixelCacheEpoch();

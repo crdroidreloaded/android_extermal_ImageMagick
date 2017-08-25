@@ -21,13 +21,13 @@
 %                                April 2016                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -289,7 +289,7 @@ static cl_mem createKernelInfo(MagickCLDevice device,const double radius,
     kernelBufferPtr[i] = (float)kernel->values[i];
   imageKernelBuffer=CreateOpenCLBuffer(device,CL_MEM_COPY_HOST_PTR |
     CL_MEM_READ_ONLY,kernel->width*sizeof(*kernelBufferPtr),kernelBufferPtr);
-  *width=kernel->width;
+  *width=(cl_uint) kernel->width;
   kernelBufferPtr=(float *) RelinquishMagickMemory(kernelBufferPtr);
   kernel=DestroyKernelInfo(kernel);
   if (imageKernelBuffer == (cl_mem) NULL)
@@ -479,13 +479,13 @@ static Image *ComputeAddNoiseImage(const Image *image,MagickCLEnv clEnv,
       break;
   };
   if (GetPixelRedTraits(image) != UndefinedPixelTrait)
-    numRandomNumberPerPixel+=numRandPerChannel;
+    numRandomNumberPerPixel+=(cl_uint) numRandPerChannel;
   if (GetPixelGreenTraits(image) != UndefinedPixelTrait)
-    numRandomNumberPerPixel+=numRandPerChannel;
+    numRandomNumberPerPixel+=(cl_uint) numRandPerChannel;
   if (GetPixelBlueTraits(image) != UndefinedPixelTrait)
-    numRandomNumberPerPixel+=numRandPerChannel;
+    numRandomNumberPerPixel+=(cl_uint) numRandPerChannel;
   if (GetPixelAlphaTraits(image) != UndefinedPixelTrait)
-    numRandomNumberPerPixel+=numRandPerChannel;
+    numRandomNumberPerPixel+=(cl_uint) numRandPerChannel;
 
   addNoiseKernel=AcquireOpenCLKernel(device,"AddNoise");
   if (addNoiseKernel == (cl_kernel) NULL)
@@ -537,7 +537,7 @@ static Image *ComputeAddNoiseImage(const Image *image,MagickCLEnv clEnv,
   }
 
   outputReady=EnqueueOpenCLKernel(queue,addNoiseKernel,1,(const size_t *) NULL,gsize,
-    lsize,image,filteredImage,exception);
+    lsize,image,filteredImage,MagickFalse,exception);
 
 cleanup:
 
@@ -698,7 +698,7 @@ static Image *ComputeBlurImage(const Image* image,MagickCLEnv clEnv,
   lsize[1]=1;
 
   outputReady=EnqueueOpenCLKernel(queue,blurRowKernel,2,(size_t *) NULL,gsize,
-    lsize,image,filteredImage,exception);
+    lsize,image,filteredImage,MagickFalse,exception);
   if (outputReady == MagickFalse)
     goto cleanup;
 
@@ -733,7 +733,7 @@ static Image *ComputeBlurImage(const Image* image,MagickCLEnv clEnv,
   lsize[1]=chunkSize;
 
   outputReady=EnqueueOpenCLKernel(queue,blurColumnKernel,2,(size_t *) NULL,gsize,
-    lsize,image,filteredImage,exception);
+    lsize,image,filteredImage,MagickFalse,exception);
 
 cleanup:
 
@@ -793,17 +793,15 @@ MagickPrivate Image* AccelerateBlurImage(const Image *image,
 static MagickBooleanType ComputeContrastImage(Image *image,MagickCLEnv clEnv,
   const MagickBooleanType sharpen,ExceptionInfo *exception)
 {
-  CacheView
-    *image_view;
-
   cl_command_queue
     queue;
 
   cl_int
-    clStatus;
+    status,
+    sign;
 
   cl_kernel
-    filterKernel;
+    contrastKernel;
 
   cl_event
     event;
@@ -811,8 +809,8 @@ static MagickBooleanType ComputeContrastImage(Image *image,MagickCLEnv clEnv,
   cl_mem
     imageBuffer;
 
-  cl_mem_flags
-    mem_flags;
+  cl_uint
+    number_channels;
 
   MagickBooleanType
     outputReady;
@@ -820,114 +818,54 @@ static MagickBooleanType ComputeContrastImage(Image *image,MagickCLEnv clEnv,
   MagickCLDevice
     device;
 
-  MagickSizeType
-    length;
-
   size_t
-    global_work_size[2];
+    gsize[2],
+    i;
 
-  unsigned int
-    i,
-    uSharpen;
+  contrastKernel=NULL;
+  outputReady=MagickFalse;
 
-  void
-    *inputPixels;
+  device=RequestOpenCLDevice(clEnv);
+  queue=AcquireOpenCLCommandQueue(device);
+  imageBuffer=GetAuthenticOpenCLBuffer(image,device,exception);
+  if (imageBuffer == (cl_mem) NULL)
+    goto cleanup;
 
-  outputReady = MagickFalse;
-  inputPixels = NULL;
-  imageBuffer = NULL;
-  filterKernel = NULL;
-  queue = NULL;
-
-  device = RequestOpenCLDevice(clEnv);
-
-  /* Create and initialize OpenCL buffers. */
-  image_view=AcquireAuthenticCacheView(image,exception);
-  inputPixels=GetCacheViewAuthenticPixels(image_view,0,0,image->columns,image->rows,exception);
-  if (inputPixels == (void *) NULL)
+  contrastKernel=AcquireOpenCLKernel(device,"Contrast");
+  if (contrastKernel == (cl_kernel) NULL)
   {
-    (void) OpenCLThrowMagickException(device,exception,GetMagickModule(),CacheWarning,"UnableToReadPixelCache.","`%s'",image->filename);
+    (void) OpenCLThrowMagickException(device,exception,GetMagickModule(),
+      ResourceLimitWarning,"AcquireOpenCLKernel failed.",".");
     goto cleanup;
   }
 
-  /* If the host pointer is aligned to the size of CLPixelPacket, 
-     then use the host buffer directly from the GPU; otherwise, 
-     create a buffer on the GPU and copy the data over */
-  if (ALIGNED(inputPixels,CLPixelPacket)) 
+  number_channels=(cl_uint) image->number_channels;
+  sign=sharpen != MagickFalse ? 1 : -1;
+
+  i=0;
+  status =SetOpenCLKernelArg(contrastKernel,i++,sizeof(cl_mem),(void *)&imageBuffer);
+  status|=SetOpenCLKernelArg(contrastKernel,i++,sizeof(cl_uint),&number_channels);
+  status|=SetOpenCLKernelArg(contrastKernel,i++,sizeof(cl_int),&sign);
+  if (status != CL_SUCCESS)
   {
-    mem_flags = CL_MEM_READ_WRITE|CL_MEM_USE_HOST_PTR;
-  }
-  else 
-  {
-    mem_flags = CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR;
-  }
-  /* create a CL buffer from image pixel buffer */
-  length = image->columns * image->rows;
-  imageBuffer = clEnv->library->clCreateBuffer(device->context, mem_flags, length * sizeof(CLPixelPacket), (void*)inputPixels, &clStatus);
-  if (clStatus != CL_SUCCESS)
-  {
-    (void) OpenCLThrowMagickException(device,exception, GetMagickModule(), ResourceLimitWarning, "clEnv->library->clCreateBuffer failed.",".");
-    goto cleanup;
-  }
-  
-  filterKernel = AcquireOpenCLKernel(device,"Contrast");
-  if (filterKernel == NULL)
-  {
-    (void) OpenCLThrowMagickException(device,exception, GetMagickModule(), ResourceLimitWarning, "AcquireOpenCLKernel failed.", ".");
+    (void) OpenCLThrowMagickException(device,exception,GetMagickModule(),
+      ResourceLimitWarning,"SetOpenCLKernelArg failed.",".");
     goto cleanup;
   }
 
-  i = 0;
-  clStatus=clEnv->library->clSetKernelArg(filterKernel,i++,sizeof(cl_mem),(void *)&imageBuffer);
+  gsize[0]=image->columns;
+  gsize[1]=image->rows;
 
-  uSharpen = (sharpen == MagickFalse)?0:1;
-  clStatus|=clEnv->library->clSetKernelArg(filterKernel,i++,sizeof(cl_uint),&uSharpen);
-  if (clStatus != CL_SUCCESS)
-  {
-    (void) OpenCLThrowMagickException(device,exception, GetMagickModule(), ResourceLimitWarning, "clEnv->library->clSetKernelArg failed.", ".");
-    goto cleanup;
-  }
-
-  global_work_size[0] = image->columns;
-  global_work_size[1] = image->rows;
-  /* launch the kernel */
-  queue = AcquireOpenCLCommandQueue(device);
-  clStatus = clEnv->library->clEnqueueNDRangeKernel(queue, filterKernel, 2, NULL, global_work_size, NULL, 0, NULL, &event);
-  if (clStatus != CL_SUCCESS)
-  {
-    (void) OpenCLThrowMagickException(device,exception, GetMagickModule(), ResourceLimitWarning, "clEnv->library->clEnqueueNDRangeKernel failed.", ".");
-    goto cleanup;
-  }
-  RecordProfileData(device,filterKernel,event);
-
-  if (ALIGNED(inputPixels,CLPixelPacket)) 
-  {
-    length = image->columns * image->rows;
-    clEnv->library->clEnqueueMapBuffer(queue, imageBuffer, CL_TRUE, CL_MAP_READ|CL_MAP_WRITE, 0, length * sizeof(CLPixelPacket), 0, NULL, NULL, &clStatus);
-  }
-  else 
-  {
-    length = image->columns * image->rows;
-    clStatus = clEnv->library->clEnqueueReadBuffer(queue, imageBuffer, CL_TRUE, 0, length * sizeof(CLPixelPacket), inputPixels, 0, NULL, NULL);
-  }
-  if (clStatus != CL_SUCCESS)
-  {
-    (void) OpenCLThrowMagickException(device,exception, GetMagickModule(), ResourceLimitWarning, "Reading output image from CL buffer failed.", ".");
-    goto cleanup;
-  }
-  outputReady=SyncCacheViewAuthenticPixels(image_view,exception);
+  outputReady=EnqueueOpenCLKernel(queue,contrastKernel,2,(const size_t *) NULL,
+    gsize,(const size_t *) NULL,image,(Image *) NULL,MagickFalse,exception);
 
 cleanup:
 
-  image_view=DestroyCacheView(image_view);
-
-  if (imageBuffer!=NULL)
-    clEnv->library->clReleaseMemObject(imageBuffer);
-  if (filterKernel!=NULL)
-    ReleaseOpenCLKernel(filterKernel);
-  if (queue != NULL)
+  if (contrastKernel != (cl_kernel) NULL)
+    ReleaseOpenCLKernel(contrastKernel);
+  if (queue != (cl_command_queue) NULL)
     ReleaseOpenCLCommandQueue(device,queue);
-  if (device != NULL)
+  if (device != (MagickCLDevice) NULL)
     ReleaseOpenCLDevice(device);
 
   return(outputReady);
@@ -945,7 +883,7 @@ MagickPrivate MagickBooleanType AccelerateContrastImage(Image *image,
   assert(image != NULL);
   assert(exception != (ExceptionInfo *) NULL);
 
-  if (checkAccelerateConditionRGBA(image) == MagickFalse)
+  if (checkAccelerateCondition(image) == MagickFalse)
     return(MagickFalse);
 
   clEnv=getOpenCLEnvironment(exception);
@@ -973,7 +911,7 @@ static MagickBooleanType ComputeContrastStretchImage(Image *image,
   ExceptionInfo *exception)
 {
 #define ContrastStretchImageTag  "ContrastStretch/Image"
-#define MaxRange(color)  ((MagickRealType) ScaleQuantumToMap((Quantum) (color)))
+#define MaxRange(color)  ((cl_float) ScaleQuantumToMap((Quantum) (color)))
 
   CacheView
     *image_view;
@@ -1005,7 +943,7 @@ static MagickBooleanType ComputeContrastStretchImage(Image *image,
   double
     intensity;
 
-  FloatPixelPacket
+  cl_float4
     black,
     white;
 
@@ -1174,8 +1112,8 @@ static MagickBooleanType ComputeContrastStretchImage(Image *image,
   /*
      Find the histogram boundaries by locating the black/white levels.
   */
-  black.red=0.0;
-  white.red=MaxRange(QuantumRange);
+  black.x=0.0;
+  white.x=MaxRange(QuantumRange);
   if ((image->channel_mask & RedChannel) != 0)
   {
     intensity=0.0;
@@ -1185,7 +1123,7 @@ static MagickBooleanType ComputeContrastStretchImage(Image *image,
       if (intensity > black_point)
         break;
     }
-    black.red=(MagickRealType) i;
+    black.x=(cl_float) i;
     intensity=0.0;
     for (i=(ssize_t) MaxMap; i != 0; i--)
     {
@@ -1193,10 +1131,10 @@ static MagickBooleanType ComputeContrastStretchImage(Image *image,
       if (intensity > ((double) image->columns*image->rows-white_point))
         break;
     }
-    white.red=(MagickRealType) i;
+    white.x=(cl_float) i;
   }
-  black.green=0.0;
-  white.green=MaxRange(QuantumRange);
+  black.y=0.0;
+  white.y=MaxRange(QuantumRange);
   if ((image->channel_mask & GreenChannel) != 0)
   {
     intensity=0.0;
@@ -1206,7 +1144,7 @@ static MagickBooleanType ComputeContrastStretchImage(Image *image,
       if (intensity > black_point)
         break;
     }
-    black.green=(MagickRealType) i;
+    black.y=(cl_float) i;
     intensity=0.0;
     for (i=(ssize_t) MaxMap; i != 0; i--)
     {
@@ -1214,10 +1152,10 @@ static MagickBooleanType ComputeContrastStretchImage(Image *image,
       if (intensity > ((double) image->columns*image->rows-white_point))
         break;
     }
-    white.green=(MagickRealType) i;
+    white.y=(cl_float) i;
   }
-  black.blue=0.0;
-  white.blue=MaxRange(QuantumRange);
+  black.z=0.0;
+  white.z=MaxRange(QuantumRange);
   if ((image->channel_mask & BlueChannel) != 0)
   {
     intensity=0.0;
@@ -1227,7 +1165,7 @@ static MagickBooleanType ComputeContrastStretchImage(Image *image,
       if (intensity > black_point)
         break;
     }
-    black.blue=(MagickRealType) i;
+    black.z=(cl_float) i;
     intensity=0.0;
     for (i=(ssize_t) MaxMap; i != 0; i--)
     {
@@ -1235,10 +1173,10 @@ static MagickBooleanType ComputeContrastStretchImage(Image *image,
       if (intensity > ((double) image->columns*image->rows-white_point))
         break;
     }
-    white.blue=(MagickRealType) i;
+    white.z=(cl_float) i;
   }
-  black.alpha=0.0;
-  white.alpha=MaxRange(QuantumRange);
+  black.w=0.0;
+  white.w=MaxRange(QuantumRange);
   if ((image->channel_mask & AlphaChannel) != 0)
   {
     intensity=0.0;
@@ -1248,7 +1186,7 @@ static MagickBooleanType ComputeContrastStretchImage(Image *image,
       if (intensity > black_point)
         break;
     }
-    black.alpha=(MagickRealType) i;
+    black.w=(cl_float) i;
     intensity=0.0;
     for (i=(ssize_t) MaxMap; i != 0; i--)
     {
@@ -1256,32 +1194,8 @@ static MagickBooleanType ComputeContrastStretchImage(Image *image,
       if (intensity > ((double) image->columns*image->rows-white_point))
         break;
     }
-    white.alpha=(MagickRealType) i;
+    white.w=(cl_float) i;
   }
-  /*
-  black.index=0.0;
-  white.index=MaxRange(QuantumRange);
-  if (((channel & IndexChannel) != 0) && (image->colorspace == CMYKColorspace))
-  {
-    intensity=0.0;
-    for (i=0; i <= (ssize_t) MaxMap; i++)
-    {
-      intensity+=histogram[i].index;
-      if (intensity > black_point)
-        break;
-    }
-    black.index=(MagickRealType) i;
-    intensity=0.0;
-    for (i=(ssize_t) MaxMap; i != 0; i--)
-    {
-      intensity+=histogram[i].index;
-      if (intensity > ((double) image->columns*image->rows-white_point))
-        break;
-    }
-    white.index=(MagickRealType) i;
-  }
-  */
-
 
   stretch_map=(PixelPacket *) AcquireQuantumMemory(MaxMap+1UL,
     sizeof(*stretch_map));
@@ -1298,67 +1212,52 @@ static MagickBooleanType ComputeContrastStretchImage(Image *image,
   {
     if ((image->channel_mask & RedChannel) != 0)
     {
-      if (i < (ssize_t) black.red)
+      if (i < (ssize_t) black.x)
         stretch_map[i].red=(Quantum) 0;
       else
-        if (i > (ssize_t) white.red)
+        if (i > (ssize_t) white.x)
           stretch_map[i].red=QuantumRange;
         else
-          if (black.red != white.red)
+          if (black.x != white.x)
             stretch_map[i].red=ScaleMapToQuantum((MagickRealType) (MaxMap*
-                  (i-black.red)/(white.red-black.red)));
+                  (i-black.x)/(white.x-black.x)));
     }
     if ((image->channel_mask & GreenChannel) != 0)
     {
-      if (i < (ssize_t) black.green)
+      if (i < (ssize_t) black.y)
         stretch_map[i].green=0;
       else
-        if (i > (ssize_t) white.green)
+        if (i > (ssize_t) white.y)
           stretch_map[i].green=QuantumRange;
         else
-          if (black.green != white.green)
+          if (black.y != white.y)
             stretch_map[i].green=ScaleMapToQuantum((MagickRealType) (MaxMap*
-                  (i-black.green)/(white.green-black.green)));
+                  (i-black.y)/(white.y-black.y)));
     }
     if ((image->channel_mask & BlueChannel) != 0)
     {
-      if (i < (ssize_t) black.blue)
+      if (i < (ssize_t) black.z)
         stretch_map[i].blue=0;
       else
-        if (i > (ssize_t) white.blue)
+        if (i > (ssize_t) white.z)
           stretch_map[i].blue= QuantumRange;
         else
-          if (black.blue != white.blue)
+          if (black.z != white.z)
             stretch_map[i].blue=ScaleMapToQuantum((MagickRealType) (MaxMap*
-                  (i-black.blue)/(white.blue-black.blue)));
+                  (i-black.z)/(white.z-black.z)));
     }
     if ((image->channel_mask & AlphaChannel) != 0)
     {
-      if (i < (ssize_t) black.alpha)
+      if (i < (ssize_t) black.w)
         stretch_map[i].alpha=0;
       else
-        if (i > (ssize_t) white.alpha)
+        if (i > (ssize_t) white.w)
           stretch_map[i].alpha=QuantumRange;
         else
-          if (black.alpha != white.alpha)
+          if (black.w != white.w)
             stretch_map[i].alpha=ScaleMapToQuantum((MagickRealType) (MaxMap*
-                  (i-black.alpha)/(white.alpha-black.alpha)));
+                  (i-black.w)/(white.w-black.w)));
     }
-    /*
-    if (((channel & IndexChannel) != 0) &&
-        (image->colorspace == CMYKColorspace))
-    {
-      if (i < (ssize_t) black.index)
-        stretch_map[i].index=0;
-      else
-        if (i > (ssize_t) white.index)
-          stretch_map[i].index=QuantumRange;
-        else
-          if (black.index != white.index)
-            stretch_map[i].index=ScaleMapToQuantum((MagickRealType) (MaxMap*
-                  (i-black.index)/(white.index-black.index)));
-    }
-    */
   }
 
   /*
@@ -1376,25 +1275,25 @@ static MagickBooleanType ComputeContrastStretchImage(Image *image,
     {
       if ((image->channel_mask & RedChannel) != 0)
       {
-        if (black.red != white.red)
+        if (black.x != white.x)
           image->colormap[i].red=stretch_map[
             ScaleQuantumToMap(image->colormap[i].red)].red;
       }
       if ((image->channel_mask & GreenChannel) != 0)
       {
-        if (black.green != white.green)
+        if (black.y != white.y)
           image->colormap[i].green=stretch_map[
             ScaleQuantumToMap(image->colormap[i].green)].green;
       }
       if ((image->channel_mask & BlueChannel) != 0)
       {
-        if (black.blue != white.blue)
+        if (black.z != white.z)
           image->colormap[i].blue=stretch_map[
             ScaleQuantumToMap(image->colormap[i].blue)].blue;
       }
       if ((image->channel_mask & AlphaChannel) != 0)
       {
-        if (black.alpha != white.alpha)
+        if (black.w != white.w)
           image->colormap[i].alpha=stretch_map[
             ScaleQuantumToMap(image->colormap[i].alpha)].alpha;
       }
@@ -1466,8 +1365,8 @@ static MagickBooleanType ComputeContrastStretchImage(Image *image,
   clStatus=clEnv->library->clSetKernelArg(stretchKernel,i++,sizeof(cl_mem),(void *)&imageBuffer);
   clStatus|=clEnv->library->clSetKernelArg(stretchKernel,i++,sizeof(ChannelType),&image->channel_mask);
   clStatus|=clEnv->library->clSetKernelArg(stretchKernel,i++,sizeof(cl_mem),(void *)&stretchMapBuffer);
-  clStatus|=clEnv->library->clSetKernelArg(stretchKernel,i++,sizeof(FloatPixelPacket),&white);
-  clStatus|=clEnv->library->clSetKernelArg(stretchKernel,i++,sizeof(FloatPixelPacket),&black);
+  clStatus|=clEnv->library->clSetKernelArg(stretchKernel,i++,sizeof(cl_float4),&white);
+  clStatus|=clEnv->library->clSetKernelArg(stretchKernel,i++,sizeof(cl_float4),&black);
   if (clStatus != CL_SUCCESS)
   {
     (void) OpenCLThrowMagickException(device,exception, GetMagickModule(), ResourceLimitWarning, "clEnv->library->clSetKernelArg failed.", ".");
@@ -2362,7 +2261,7 @@ static MagickBooleanType ComputeEqualizeImage(Image *image,MagickCLEnv clEnv,
   cl_uint4
     *histogram;
 
-  FloatPixelPacket
+  cl_float4
     white,
     black,
     intensity,
@@ -2520,8 +2419,8 @@ static MagickBooleanType ComputeEqualizeImage(Image *image,MagickCLEnv clEnv,
   if (equalize_map == (PixelPacket *) NULL)
     ThrowBinaryException(ResourceLimitWarning,"MemoryAllocationFailed", image->filename);
 
-  map=(FloatPixelPacket *) AcquireQuantumMemory(MaxMap+1UL,sizeof(*map));
-  if (map == (FloatPixelPacket *) NULL)
+  map=(cl_float4 *) AcquireQuantumMemory(MaxMap+1UL,sizeof(*map));
+  if (map == (cl_float4 *) NULL)
     ThrowBinaryException(ResourceLimitWarning,"MemoryAllocationFailed", image->filename);
 
   /*
@@ -2532,25 +2431,18 @@ static MagickBooleanType ComputeEqualizeImage(Image *image,MagickCLEnv clEnv,
   {
     if ((image->channel_mask & SyncChannels) != 0)
     {
-      intensity.red+=histogram[i].s[2];
+      intensity.x+=histogram[i].s[2];
       map[i]=intensity;
       continue;
     }
     if ((image->channel_mask & RedChannel) != 0)
-      intensity.red+=histogram[i].s[2];
+      intensity.x+=histogram[i].s[2];
     if ((image->channel_mask & GreenChannel) != 0)
-      intensity.green+=histogram[i].s[1];
+      intensity.y+=histogram[i].s[1];
     if ((image->channel_mask & BlueChannel) != 0)
-      intensity.blue+=histogram[i].s[0];
+      intensity.z+=histogram[i].s[0];
     if ((image->channel_mask & AlphaChannel) != 0)
-      intensity.alpha+=histogram[i].s[3];
-    /*
-    if (((channel & IndexChannel) != 0) &&
-        (image->colorspace == CMYKColorspace))
-    {
-      intensity.index+=histogram[i].index; 
-    }
-    */
+      intensity.w+=histogram[i].s[3];
     map[i]=intensity;
   }
   black=map[0];
@@ -2560,30 +2452,23 @@ static MagickBooleanType ComputeEqualizeImage(Image *image,MagickCLEnv clEnv,
   {
     if ((image->channel_mask & SyncChannels) != 0)
     {
-      if (white.red != black.red)
+      if (white.x != black.x)
         equalize_map[i].red=ScaleMapToQuantum((MagickRealType) ((MaxMap*
-                (map[i].red-black.red))/(white.red-black.red)));
+                (map[i].x-black.x))/(white.x-black.x)));
       continue;
     }
-    if (((image->channel_mask & RedChannel) != 0) && (white.red != black.red))
+    if (((image->channel_mask & RedChannel) != 0) && (white.x != black.x))
       equalize_map[i].red=ScaleMapToQuantum((MagickRealType) ((MaxMap*
-              (map[i].red-black.red))/(white.red-black.red)));
-    if (((image->channel_mask & GreenChannel) != 0) && (white.green != black.green))
+              (map[i].x-black.x))/(white.x-black.x)));
+    if (((image->channel_mask & GreenChannel) != 0) && (white.y != black.y))
       equalize_map[i].green=ScaleMapToQuantum((MagickRealType) ((MaxMap*
-              (map[i].green-black.green))/(white.green-black.green)));
-    if (((image->channel_mask & BlueChannel) != 0) && (white.blue != black.blue))
+              (map[i].y-black.y))/(white.y-black.y)));
+    if (((image->channel_mask & BlueChannel) != 0) && (white.z != black.z))
       equalize_map[i].blue=ScaleMapToQuantum((MagickRealType) ((MaxMap*
-              (map[i].blue-black.blue))/(white.blue-black.blue)));
-    if (((image->channel_mask & AlphaChannel) != 0) && (white.alpha != black.alpha))
+              (map[i].z-black.z))/(white.z-black.z)));
+    if (((image->channel_mask & AlphaChannel) != 0) && (white.w != black.w))
       equalize_map[i].alpha=ScaleMapToQuantum((MagickRealType) ((MaxMap*
-              (map[i].alpha-black.alpha))/(white.alpha-black.alpha)));
-    /*
-    if ((((channel & IndexChannel) != 0) &&
-          (image->colorspace == CMYKColorspace)) &&
-        (white.index != black.index))
-      equalize_map[i].index=ScaleMapToQuantum((MagickRealType) ((MaxMap*
-              (map[i].index-black.index))/(white.index-black.index)));
-    */
+              (map[i].w-black.w))/(white.w-black.w)));
   }
 
   if (image->storage_class == PseudoClass)
@@ -2595,7 +2480,7 @@ static MagickBooleanType ComputeEqualizeImage(Image *image,MagickCLEnv clEnv,
     {
       if ((image->channel_mask & SyncChannels) != 0)
       {
-        if (white.red != black.red)
+        if (white.x != black.x)
         {
           image->colormap[i].red=equalize_map[
             ScaleQuantumToMap(image->colormap[i].red)].red;
@@ -2608,17 +2493,16 @@ static MagickBooleanType ComputeEqualizeImage(Image *image,MagickCLEnv clEnv,
         }
         continue;
       }
-      if (((image->channel_mask & RedChannel) != 0) && (white.red != black.red))
+      if (((image->channel_mask & RedChannel) != 0) && (white.x != black.x))
         image->colormap[i].red=equalize_map[
           ScaleQuantumToMap(image->colormap[i].red)].red;
-      if (((image->channel_mask & GreenChannel) != 0) && (white.green != black.green))
+      if (((image->channel_mask & GreenChannel) != 0) && (white.y != black.y))
         image->colormap[i].green=equalize_map[
           ScaleQuantumToMap(image->colormap[i].green)].green;
-      if (((image->channel_mask & BlueChannel) != 0) && (white.blue != black.blue))
+      if (((image->channel_mask & BlueChannel) != 0) && (white.z != black.z))
         image->colormap[i].blue=equalize_map[
           ScaleQuantumToMap(image->colormap[i].blue)].blue;
-      if (((image->channel_mask & AlphaChannel) != 0) &&
-          (white.alpha != black.alpha))
+      if (((image->channel_mask & AlphaChannel) != 0) && (white.w != black.w))
         image->colormap[i].alpha=equalize_map[
           ScaleQuantumToMap(image->colormap[i].alpha)].alpha;
     }
@@ -2688,8 +2572,8 @@ static MagickBooleanType ComputeEqualizeImage(Image *image,MagickCLEnv clEnv,
   clStatus=clEnv->library->clSetKernelArg(equalizeKernel,i++,sizeof(cl_mem),(void *)&imageBuffer);
   clStatus|=clEnv->library->clSetKernelArg(equalizeKernel,i++,sizeof(ChannelType),&image->channel_mask);
   clStatus|=clEnv->library->clSetKernelArg(equalizeKernel,i++,sizeof(cl_mem),(void *)&equalizeMapBuffer);
-  clStatus|=clEnv->library->clSetKernelArg(equalizeKernel,i++,sizeof(FloatPixelPacket),&white);
-  clStatus|=clEnv->library->clSetKernelArg(equalizeKernel,i++,sizeof(FloatPixelPacket),&black);
+  clStatus|=clEnv->library->clSetKernelArg(equalizeKernel,i++,sizeof(cl_float4),&white);
+  clStatus|=clEnv->library->clSetKernelArg(equalizeKernel,i++,sizeof(cl_float4),&black);
   if (clStatus != CL_SUCCESS)
   {
     (void) OpenCLThrowMagickException(device,exception, GetMagickModule(), ResourceLimitWarning, "clEnv->library->clSetKernelArg failed.", ".");
@@ -2735,7 +2619,7 @@ cleanup:
   if (imageBuffer!=NULL)
     clEnv->library->clReleaseMemObject(imageBuffer);
   if (map!=NULL)
-    map=(FloatPixelPacket *) RelinquishMagickMemory(map);
+    map=(cl_float4 *) RelinquishMagickMemory(map);
   if (equalizeMapBuffer!=NULL)
     clEnv->library->clReleaseMemObject(equalizeMapBuffer);
   if (equalize_map!=NULL)
@@ -2882,7 +2766,8 @@ static MagickBooleanType ComputeFunctionImage(Image *image,MagickCLEnv clEnv,
   gsize[0]=image->columns;
   gsize[1]=image->rows;
   outputReady=EnqueueOpenCLKernel(queue,functionKernel,2,(const size_t *) NULL,
-    gsize,(const size_t *) NULL,image,(const Image *) NULL,exception);
+    gsize,(const size_t *) NULL,image,(const Image *) NULL,MagickFalse,
+    exception);
 
 cleanup:
 
@@ -3003,7 +2888,7 @@ static MagickBooleanType ComputeGrayscaleImage(Image *image,MagickCLEnv clEnv,
   gsize[1]=image->rows;
   outputReady=EnqueueOpenCLKernel(queue,grayscaleKernel,2,
     (const size_t *) NULL,gsize,(const size_t *) NULL,image,(Image *) NULL,
-    exception);
+    MagickFalse,exception);
 
 cleanup:
 
@@ -3233,7 +3118,7 @@ static Image *ComputeLocalContrastImage(const Image *image,MagickCLEnv clEnv,
       imageRows = (unsigned int) image->rows;
       iRadius = (cl_int) (image->rows > image->columns ? image->rows : image->columns) * 0.002f * fabs(radius); // Normalized radius, 100% gives blur radius of 20% of the largest dimension
 
-      passes = (((1.0f * imageColumns) * imageColumns * iRadius) + 3999999999) / 4000000000.0f;
+      passes = (((1.0f * imageRows) * imageColumns * iRadius) + 3999999999) / 4000000000.0f;
       passes = (passes < 1) ? 1: passes;
 
       /* set the kernel arguments */
@@ -3261,7 +3146,7 @@ static Image *ComputeLocalContrastImage(const Image *image,MagickCLEnv clEnv,
         size_t goffset[2];
 
         gsize[0] = 256;
-        gsize[1] = image->rows / passes;
+        gsize[1] = (image->rows + passes - 1) / passes;
         wsize[0] = 256;
         wsize[1] = 1;
         goffset[0] = 0;
@@ -4052,7 +3937,7 @@ static MagickBooleanType resizeHorizontalFilter(MagickCLDevice device,
     Support too small even for nearest neighbour: Reduce to point
     sampling.
     */
-    support=(MagickRealType) 0.5;
+    support=(float) 0.5;
     scale=1.0;
   }
   scale=PerceptibleReciprocal(scale);
@@ -4163,7 +4048,9 @@ RestoreMSCWarning
   lsize[0]=workgroupSize;
   lsize[1]=1;
   outputReady=EnqueueOpenCLKernel(queue,horizontalKernel,2,
-    (const size_t *) NULL,gsize,lsize,image,filteredImage,exception);
+    (const size_t *) NULL,gsize,lsize,image,filteredImage,MagickFalse,
+    exception);
+
 cleanup:
 
   if (horizontalKernel != (cl_kernel) NULL)
@@ -4234,7 +4121,7 @@ static MagickBooleanType resizeVerticalFilter(MagickCLDevice device,
     Support too small even for nearest neighbour: Reduce to point
     sampling.
     */
-    support=(MagickRealType) 0.5;
+    support=(float) 0.5;
     scale=1.0;
   }
   scale=PerceptibleReciprocal(scale);
@@ -4345,7 +4232,7 @@ RestoreMSCWarning
   lsize[0]=1;
   lsize[1]=workgroupSize;
   outputReady=EnqueueOpenCLKernel(queue,verticalKernel,2,(const size_t *) NULL,
-    gsize,lsize,image,filteredImage,exception);
+    gsize,lsize,image,filteredImage,MagickFalse,exception);
 
 cleanup:
 
@@ -4642,8 +4529,8 @@ static Image* ComputeRotationalBlurImage(const Image *image,MagickCLEnv clEnv,
     goto cleanup;
   }
 
-  theta=DegreesToRadians(angle)/(MagickRealType) (cossin_theta_size-1);
-  offset=theta*(MagickRealType) (cossin_theta_size-1)/2.0;
+  theta=DegreesToRadians(angle)/(double) (cossin_theta_size-1);
+  offset=theta*(float) (cossin_theta_size-1)/2.0;
   for (i=0; i < (ssize_t) cossin_theta_size; i++)
   {
     cosThetaPtr[i]=(float)cos((double) (theta*i-offset));
@@ -4693,7 +4580,7 @@ static Image* ComputeRotationalBlurImage(const Image *image,MagickCLEnv clEnv,
   gsize[1]=image->rows;
   outputReady=EnqueueOpenCLKernel(queue,rotationalBlurKernel,2,
     (const size_t *) NULL,gsize,(const size_t *) NULL,image,filteredImage,
-    exception);
+    MagickFalse,exception);
 
 cleanup:
 
@@ -4877,8 +4764,9 @@ static Image *ComputeUnsharpMaskImage(const Image *image,MagickCLEnv clEnv,
   lsize[0]=chunkSize;
   lsize[1]=1;
   outputReady=EnqueueOpenCLKernel(queue,blurRowKernel,2,
-    (const size_t *) NULL,gsize,lsize,image,filteredImage,exception);
-  
+    (const size_t *) NULL,gsize,lsize,image,filteredImage,MagickFalse,
+    exception);
+
   chunkSize=256;
   fGain=(float) gain;
   fThreshold=(float) threshold;
@@ -4909,7 +4797,8 @@ static Image *ComputeUnsharpMaskImage(const Image *image,MagickCLEnv clEnv,
   lsize[0]=1;
   lsize[1]=chunkSize;
   outputReady=EnqueueOpenCLKernel(queue,unsharpMaskBlurColumnKernel,2,
-    (const size_t *) NULL,gsize,lsize,image,filteredImage,exception);
+    (const size_t *) NULL,gsize,lsize,image,filteredImage,MagickFalse,
+    exception);
 
 cleanup:
 
@@ -5033,7 +4922,7 @@ static Image *ComputeUnsharpMaskImageSingle(const Image *image,
   lsize[0]=8;
   lsize[1]=32;
   outputReady=EnqueueOpenCLKernel(queue,unsharpMaskKernel,2,(const size_t *) NULL,
-    gsize,lsize,image,filteredImage,exception);
+    gsize,lsize,image,filteredImage,MagickFalse,exception);
 
 cleanup:
 
@@ -5123,15 +5012,22 @@ static Image *ComputeWaveletDenoiseImage(const Image *image,MagickCLEnv clEnv,
     device;
 
   size_t
+    goffset[2],
     gsize[2],
     i,
-    lsize[2];
+    lsize[2],
+    passes,
+    x;
 
   filteredImage=NULL;
   denoiseKernel=NULL;
+  queue=NULL;
   outputReady=MagickFalse;
 
   device=RequestOpenCLDevice(clEnv);
+  /* Work around an issue on low end Intel devices */
+  if (strcmp("Intel(R) HD Graphics",device->name) == 0)
+    goto cleanup;
   queue=AcquireOpenCLCommandQueue(device);
   filteredImage=CloneImage(image,image->columns,image->rows,MagickTrue,
     exception);
@@ -5161,6 +5057,8 @@ static Image *ComputeWaveletDenoiseImage(const Image *image,MagickCLEnv clEnv,
   if ((max_channels == 4) || (max_channels == 2))
     max_channels=max_channels-1;
   thresh=threshold;
+  passes=(((1.0f*image->columns)*image->rows)+1999999.0f)/2000000.0f;
+  passes=(passes < 1) ? 1 : passes;
 
   i=0;
   status =SetOpenCLKernelArg(denoiseKernel,i++,sizeof(cl_mem),(void *)&imageBuffer);
@@ -5172,18 +5070,26 @@ static Image *ComputeWaveletDenoiseImage(const Image *image,MagickCLEnv clEnv,
   status|=SetOpenCLKernelArg(denoiseKernel,i++,sizeof(cl_uint),(void *)&width);
   status|=SetOpenCLKernelArg(denoiseKernel,i++,sizeof(cl_uint),(void *)&height);
   if (status != CL_SUCCESS)
-  {
-    (void) OpenCLThrowMagickException(device,exception,GetMagickModule(),
-      ResourceLimitWarning,"SetOpenCLKernelArg failed.",".");
-    goto cleanup;
-  }
+    {
+      (void) OpenCLThrowMagickException(device,exception,GetMagickModule(),
+        ResourceLimitWarning,"SetOpenCLKernelArg failed.",".");
+      goto cleanup;
+    }
 
-  gsize[0]=((width+(SIZE-1))/SIZE)*TILESIZE;
-  gsize[1]=((height+(SIZE-1))/SIZE)*4;
-  lsize[0]=TILESIZE;
-  lsize[1]=4;
-  outputReady=EnqueueOpenCLKernel(queue,denoiseKernel,2,(const size_t *) NULL,
-    gsize,lsize,image,filteredImage,exception);
+  for (x = 0; x < passes; ++x)
+  {
+    gsize[0]=((width+(SIZE-1))/SIZE)*TILESIZE;
+    gsize[1]=((((height+(SIZE-1))/SIZE)+passes-1)/passes)*4;
+    lsize[0]=TILESIZE;
+    lsize[1]=4;
+    goffset[0]=0;
+    goffset[1]=x*gsize[1];
+
+    outputReady=EnqueueOpenCLKernel(queue,denoiseKernel,2,goffset,gsize,lsize,
+      image,filteredImage,MagickTrue,exception);
+    if (outputReady == MagickFalse)
+      break;
+  }
 
 cleanup:
 

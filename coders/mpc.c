@@ -17,13 +17,13 @@
 %                                 March 2000                                  %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -66,6 +66,7 @@
 #include "MagickCore/profile.h"
 #include "MagickCore/property.h"
 #include "MagickCore/quantum-private.h"
+#include "MagickCore/resource_.h"
 #include "MagickCore/static.h"
 #include "MagickCore/statistic.h"
 #include "MagickCore/string_.h"
@@ -338,12 +339,6 @@ static Image *ReadMPCImage(const ImageInfo *image_info,ExceptionInfo *exception)
               case 'a':
               case 'A':
               {
-                if (LocaleCompare(keyword,"alpha-color") == 0)
-                  {
-                    (void) QueryColorCompliance(options,AllCompliance,
-                      &image->alpha_color,exception);
-                    break;
-                  }
                 if (LocaleCompare(keyword,"alpha-trait") == 0)
                   {
                     ssize_t
@@ -536,6 +531,12 @@ static Image *ReadMPCImage(const ImageInfo *image_info,ExceptionInfo *exception)
                     signature=(unsigned int) StringToUnsignedLong(options);
                     break;
                   }
+                if (LocaleCompare(keyword,"mattecolor") == 0)
+                  {
+                    (void) QueryColorCompliance(options,AllCompliance,
+                      &image->matte_color,exception);
+                    break;
+                  }
                 if (LocaleCompare(keyword,"maximum-error") == 0)
                   {
                     image->error.normalized_maximum_error=StringToDouble(
@@ -554,6 +555,24 @@ static Image *ReadMPCImage(const ImageInfo *image_info,ExceptionInfo *exception)
                     break;
                   }
                 (void) SetImageProperty(image,keyword,options,exception);
+                break;
+              }
+              case 'n':
+              case 'N':
+              {
+                if (LocaleCompare(keyword,"number-channels") == 0)
+                  {
+                    image->number_channels=StringToUnsignedLong(options);
+                    break;
+                  }
+                if (LocaleCompare(keyword,"number-meta-channels") == 0)
+                  {
+                    image->number_meta_channels=StringToUnsignedLong(options);
+                    if (image->number_meta_channels > MaxPixelChannels)
+                      ThrowReaderException(CorruptImageError,
+                        "ImproperImageHeader");
+                    break;
+                  }
                 break;
               }
               case 'o':
@@ -767,9 +786,17 @@ static Image *ReadMPCImage(const ImageInfo *image_info,ExceptionInfo *exception)
         (image->storage_class == UndefinedClass) ||
         (image->compression == UndefinedCompression) || (image->columns == 0) ||
         (image->rows == 0))
-      ThrowReaderException(CorruptImageError,"ImproperImageHeader");
+      {
+        if (profiles != (LinkedListInfo *) NULL)
+          profiles=DestroyLinkedList(profiles,RelinquishMagickMemory);
+        ThrowReaderException(CorruptImageError,"ImproperImageHeader");
+      }
     if (signature != GetMagickSignature((const StringInfo *) NULL))
-      ThrowReaderException(CacheError,"IncompatibleAPI");
+      {
+        if (profiles != (LinkedListInfo *) NULL)
+          profiles=DestroyLinkedList(profiles,RelinquishMagickMemory);
+        ThrowReaderException(CacheError,"IncompatibleAPI");
+      }
     if (image->montage != (char *) NULL)
       {
         register char
@@ -793,7 +820,12 @@ static Image *ReadMPCImage(const ImageInfo *image_info,ExceptionInfo *exception)
               image->directory=(char *) ResizeQuantumMemory(image->directory,
                 length+MagickPathExtent,sizeof(*image->directory));
               if (image->directory == (char *) NULL)
-                ThrowReaderException(CorruptImageError,"UnableToReadImageData");
+                {
+                  if (profiles != (LinkedListInfo *) NULL)
+                    profiles=DestroyLinkedList(profiles,RelinquishMagickMemory);
+                  ThrowReaderException(CorruptImageError,
+                    "UnableToReadImageData");
+                }
               p=image->directory+strlen(image->directory);
             }
           c=ReadBlobByte(image);
@@ -831,35 +863,43 @@ static Image *ReadMPCImage(const ImageInfo *image_info,ExceptionInfo *exception)
     depth=GetImageQuantumDepth(image,MagickFalse);
     if (image->storage_class == PseudoClass)
       {
+        size_t
+          packet_size;
+
+        unsigned char
+          *colormap;
+
         /*
           Create image colormap.
         */
-        if (AcquireImageColormap(image,image->colors,exception) == MagickFalse)
+        packet_size=(size_t) (3UL*depth/8UL);
+        if ((packet_size*image->colors) > GetBlobSize(image))
+          ThrowReaderException(CorruptImageError,"InsufficientImageDataInFile");
+        image->colormap=(PixelInfo *) AcquireQuantumMemory(image->colors+1,
+          sizeof(*image->colormap));
+        if (image->colormap == (PixelInfo *) NULL)
           ThrowReaderException(ResourceLimitError,"MemoryAllocationFailed");
         if (image->colors != 0)
           {
-            size_t
-              packet_size;
-
-            unsigned char
-              *colormap;
-
             /*
               Read image colormap from file.
             */
-            packet_size=(size_t) (3UL*depth/8UL);
             colormap=(unsigned char *) AcquireQuantumMemory(image->colors,
               packet_size*sizeof(*colormap));
             if (colormap == (unsigned char *) NULL)
               ThrowReaderException(ResourceLimitError,"MemoryAllocationFailed");
             count=ReadBlob(image,packet_size*image->colors,colormap);
             if (count != (ssize_t) (packet_size*image->colors))
-              ThrowReaderException(CorruptImageError,
-                "InsufficientImageDataInFile");
+              {
+                colormap=(unsigned char *) RelinquishMagickMemory(colormap);
+                ThrowReaderException(CorruptImageError,
+                  "InsufficientImageDataInFile");
+              }
             p=colormap;
             switch (depth)
             {
               default:
+                colormap=(unsigned char *) RelinquishMagickMemory(colormap);
                 ThrowReaderException(CorruptImageError,
                   "ImageDepthNotSupported");
               case 8:
@@ -923,9 +963,9 @@ static Image *ReadMPCImage(const ImageInfo *image_info,ExceptionInfo *exception)
     if ((image_info->ping != MagickFalse) && (image_info->number_scenes != 0))
       if (image->scene >= (image_info->scene+image_info->number_scenes-1))
         break;
-    status=SetImageExtent(image,image->columns,image->rows,exception);
-    if (status == MagickFalse)
-      return(DestroyImageList(image));
+    if ((AcquireMagickResource(WidthResource,image->columns) == MagickFalse) ||
+        (AcquireMagickResource(HeightResource,image->rows) == MagickFalse))
+      ThrowReaderException(ImageError,"WidthOrHeightExceedsLimit");
     /*
       Attach persistent pixel cache.
     */
@@ -991,13 +1031,13 @@ ModuleExport size_t RegisterMPCImage(void)
 
   entry=AcquireMagickInfo("MPC","CACHE",
     "Magick Persistent Cache image format");
-  entry->module=ConstantString("CACHE");
   entry->flags|=CoderStealthFlag;
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("MPC","MPC","Magick Persistent Cache image format");
   entry->decoder=(DecodeImageHandler *) ReadMPCImage;
   entry->encoder=(EncodeImageHandler *) WriteMPCImage;
   entry->magick=(IsImageFormatHandler *) IsMPC;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   (void) RegisterMagickInfo(entry);
   return(MagickImageCoderSignature);
 }
@@ -1116,6 +1156,10 @@ static MagickBooleanType WriteMPCImage(const ImageInfo *image_info,Image *image,
       image->alpha_trait));
     (void) WriteBlobString(image,buffer);
     (void) FormatLocaleString(buffer,MagickPathExtent,
+      "number-channels=%.20g  number-meta-channels=%.20g\n",
+      (double) image->number_channels,(double) image->number_meta_channels);
+    (void) WriteBlobString(image,buffer);
+    (void) FormatLocaleString(buffer,MagickPathExtent,
       "columns=%.20g  rows=%.20g depth=%.20g\n",(double) image->columns,
       (double) image->rows,(double) image->depth);
     (void) WriteBlobString(image,buffer);
@@ -1125,12 +1169,9 @@ static MagickBooleanType WriteMPCImage(const ImageInfo *image_info,Image *image,
           CommandOptionToMnemonic(MagickTypeOptions,image->type));
         (void) WriteBlobString(image,buffer);
       }
-    if (image->colorspace != UndefinedColorspace)
-      {
-        (void) FormatLocaleString(buffer,MagickPathExtent,"colorspace=%s\n",
-          CommandOptionToMnemonic(MagickColorspaceOptions,image->colorspace));
-        (void) WriteBlobString(image,buffer);
-      }
+    (void) FormatLocaleString(buffer,MagickPathExtent,"colorspace=%s\n",
+      CommandOptionToMnemonic(MagickColorspaceOptions,image->colorspace));
+    (void) WriteBlobString(image,buffer);
     if (image->intensity != UndefinedPixelIntensityMethod)
       {
         (void) FormatLocaleString(buffer,MagickPathExtent,
@@ -1451,8 +1492,6 @@ static MagickBooleanType WriteMPCImage(const ImageInfo *image_info,Image *image,
     */
     status=PersistPixelCache(image,cache_filename,MagickFalse,&offset,
       exception);
-    if (status == MagickFalse)
-      ThrowWriterException(CacheError,"UnableToPersistPixelCache");
     if (GetNextImageInList(image) == (Image *) NULL)
       break;
     image=SyncNextImageInList(image);

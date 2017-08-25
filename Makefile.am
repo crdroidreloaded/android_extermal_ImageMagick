@@ -1,10 +1,10 @@
-#  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
 #  obtain a copy of the License at
 #
-#    http://www.imagemagick.org/script/license.php
+#    https://www.imagemagick.org/script/license.php
 #
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
@@ -108,6 +108,7 @@ TOP_EXTRA_DIST = \
 	Platforms.txt \
 	README.txt \
 	index.html \
+	gitversion.sh \
 	version.sh \
 	winpath.sh
 
@@ -284,7 +285,7 @@ magick-version: MagickCore/version.h
 	fi ; \
 	touch magick-version
 
-${srcdir}/configure: ${srcdir}/version.sh
+${srcdir}/configure: ${srcdir}/version.sh ${srcdir}/gitversion.sh
 
 # Automagically reconfigure libtool
 LIBTOOL_DEPS = @LIBTOOL_DEPS@

@@ -17,13 +17,13 @@
 %                                 June 2001                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -386,7 +386,12 @@ static Image *ReadJP2Image(const ImageInfo *image_info,ExceptionInfo *exception)
   opj_stream_destroy(jp2_stream);
   for (i=0; i < (ssize_t) jp2_image->numcomps; i++)
   {
-    if ((jp2_image->comps[i].dx == 0) || (jp2_image->comps[i].dy == 0))
+    if ((jp2_image->comps[0].dx == 0) || (jp2_image->comps[0].dy == 0) ||
+        (jp2_image->comps[0].dx != jp2_image->comps[i].dx) ||
+        (jp2_image->comps[0].dy != jp2_image->comps[i].dy) ||
+        (jp2_image->comps[0].prec != jp2_image->comps[i].prec) ||
+        (jp2_image->comps[0].sgnd != jp2_image->comps[i].sgnd) ||
+        ((image->ping == MagickFalse) && (jp2_image->comps[i].data == NULL)))
       {
         opj_destroy_codec(jp2_codec);
         opj_image_destroy(jp2_image);
@@ -403,17 +408,17 @@ static Image *ReadJP2Image(const ImageInfo *image_info,ExceptionInfo *exception)
   if (status == MagickFalse)
     return(DestroyImageList(image));
   image->compression=JPEG2000Compression;
-  if (jp2_image->numcomps <= 2)
+  if (jp2_image->color_space == 2)
     {
       SetImageColorspace(image,GRAYColorspace,exception);
       if (jp2_image->numcomps > 1)
         image->alpha_trait=BlendPixelTrait;
     }
+  else
+    if (jp2_image->color_space == 3)
+      SetImageColorspace(image,Rec601YCbCrColorspace,exception);
   if (jp2_image->numcomps > 3)
     image->alpha_trait=BlendPixelTrait;
-  for (i=0; i < (ssize_t) jp2_image->numcomps; i++)
-    if ((jp2_image->comps[i].dx > 1) || (jp2_image->comps[i].dy > 1))
-      SetImageColorspace(image,YUVColorspace,exception);
   if (jp2_image->icc_profile_buf != (unsigned char *) NULL)
     {
       StringInfo
@@ -504,6 +509,7 @@ static Image *ReadJP2Image(const ImageInfo *image_info,ExceptionInfo *exception)
   opj_destroy_codec(jp2_codec);
   opj_image_destroy(jp2_image);
   opj_destroy_cstr_index(&codestream_index);
+  (void) CloseBlob(image);
   return(GetFirstImageInList(image));
 }
 #endif
@@ -548,7 +554,8 @@ ModuleExport size_t RegisterJP2Image(void)
   entry->mime_type=ConstantString("image/jp2");
   entry->magick=(IsImageFormatHandler *) IsJP2;
   entry->flags^=CoderAdjoinFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
+  entry->flags|=CoderEncoderSeekableStreamFlag;
 #if defined(MAGICKCORE_LIBOPENJP2_DELEGATE)
   entry->decoder=(DecodeImageHandler *) ReadJP2Image;
   entry->encoder=(EncodeImageHandler *) WriteJP2Image;
@@ -560,7 +567,8 @@ ModuleExport size_t RegisterJP2Image(void)
   entry->mime_type=ConstantString("image/jp2");
   entry->magick=(IsImageFormatHandler *) IsJ2K;
   entry->flags^=CoderAdjoinFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
+  entry->flags|=CoderEncoderSeekableStreamFlag;
 #if defined(MAGICKCORE_LIBOPENJP2_DELEGATE)
   entry->decoder=(DecodeImageHandler *) ReadJP2Image;
   entry->encoder=(EncodeImageHandler *) WriteJP2Image;
@@ -572,7 +580,8 @@ ModuleExport size_t RegisterJP2Image(void)
   entry->mime_type=ConstantString("image/jp2");
   entry->magick=(IsImageFormatHandler *) IsJ2K;
   entry->flags^=CoderAdjoinFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
+  entry->flags|=CoderEncoderSeekableStreamFlag;
 #if defined(MAGICKCORE_LIBOPENJP2_DELEGATE)
   entry->decoder=(DecodeImageHandler *) ReadJP2Image;
   entry->encoder=(EncodeImageHandler *) WriteJP2Image;
@@ -584,7 +593,8 @@ ModuleExport size_t RegisterJP2Image(void)
   entry->mime_type=ConstantString("image/jp2");
   entry->magick=(IsImageFormatHandler *) IsJP2;
   entry->flags^=CoderAdjoinFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
+  entry->flags|=CoderEncoderSeekableStreamFlag;
 #if defined(MAGICKCORE_LIBOPENJP2_DELEGATE)
   entry->decoder=(DecodeImageHandler *) ReadJP2Image;
   entry->encoder=(EncodeImageHandler *) WriteJP2Image;
@@ -596,7 +606,8 @@ ModuleExport size_t RegisterJP2Image(void)
   entry->mime_type=ConstantString("image/jp2");
   entry->magick=(IsImageFormatHandler *) IsJP2;
   entry->flags^=CoderAdjoinFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
+  entry->flags|=CoderEncoderSeekableStreamFlag;
 #if defined(MAGICKCORE_LIBOPENJP2_DELEGATE)
   entry->decoder=(DecodeImageHandler *) ReadJP2Image;
   entry->encoder=(EncodeImageHandler *) WriteJP2Image;
@@ -608,7 +619,8 @@ ModuleExport size_t RegisterJP2Image(void)
   entry->mime_type=ConstantString("image/jp2");
   entry->magick=(IsImageFormatHandler *) IsJP2;
   entry->flags^=CoderAdjoinFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
+  entry->flags|=CoderEncoderSeekableStreamFlag;
 #if defined(MAGICKCORE_LIBOPENJP2_DELEGATE)
   entry->decoder=(DecodeImageHandler *) ReadJP2Image;
   entry->encoder=(EncodeImageHandler *) WriteJP2Image;

@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -336,7 +336,7 @@ static Image *ReadXPMImage(const ImageInfo *image_info,ExceptionInfo *exception)
     if (count == 4)
       break;
   }
-  if ((count != 4) || (width == 0) || (width > 2) ||
+  if ((count != 4) || (width == 0) || (width > 3) ||
       (image->columns == 0) || (image->rows == 0) ||
       (image->colors == 0) || (image->colors > MaxColormapSize))
     {

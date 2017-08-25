@@ -106,8 +106,8 @@ namespace Magick
     bool alpha(void) const;
 
     // Transparent color
-    void alphaColor(const Color &alphaColor_);
-    Color alphaColor(void) const;
+    void matteColor(const Color &matteColor_);
+    Color matteColor(void) const;
 
     // Time in 1/100ths of a second which must expire before
     // displaying the next image in an animated sequence.
@@ -624,6 +624,7 @@ namespace Magick
     std::string artifact(const std::string &name_) const;
 
     // Access/Update a named image attribute
+    void attribute(const std::string name_,const char *value_);
     void attribute(const std::string name_,const std::string value_);
     std::string attribute(const std::string name_) const;
 
@@ -1249,7 +1250,8 @@ namespace Magick
     void roll(const Geometry &roll_);
     void roll(const size_t columns_,const size_t rows_);
 
-    // Rotate image counter-clockwise by specified number of degrees.
+    // Rotate image clockwise by specified number of degrees. Specify a
+    // negative number for degrees to rotate counter-clockwise.
     void rotate(const double degrees_);
 
     // Rotational blur image.

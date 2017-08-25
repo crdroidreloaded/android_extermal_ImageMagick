@@ -17,13 +17,13 @@
 %                                 October 1996                                %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -336,7 +336,7 @@ MagickExport Image *AdaptiveBlurImage(const Image *image,const double radius,
             (blur_traits == UndefinedPixelTrait))
           continue;
         if (((blur_traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(image,p+center) == 0))
+            (GetPixelWriteMask(image,p+center) == 0))
           {
             SetPixelChannel(blur_image,channel,p[center+i],q);
             continue;
@@ -657,7 +657,7 @@ MagickExport Image *AdaptiveSharpenImage(const Image *image,const double radius,
             (sharp_traits == UndefinedPixelTrait))
           continue;
         if (((sharp_traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(image,p+center) == 0))
+            (GetPixelWriteMask(image,p+center) == 0))
           {
             SetPixelChannel(sharp_image,channel,p[center+i],q);
             continue;
@@ -2136,7 +2136,7 @@ MagickExport Image *MotionBlurImage(const Image *image,const double radius,
             (blur_traits == UndefinedPixelTrait))
           continue;
         if (((blur_traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(image,p) == 0))
+            (GetPixelWriteMask(image,p) == 0))
           {
             SetPixelChannel(blur_image,channel,p[i],q);
             continue;
@@ -2323,7 +2323,7 @@ MagickExport Image *PreviewImage(const Image *image,const PreviewType preview,
     if (i == (NumberTiles/2))
       {
         (void) QueryColorCompliance("#dfdfdf",AllCompliance,
-          &thumbnail->alpha_color,exception);
+          &thumbnail->matte_color,exception);
         AppendImageToList(&images,thumbnail);
         continue;
       }
@@ -2935,14 +2935,14 @@ MagickExport Image *RotationalBlurImage(const Image *image,const double angle,
             (blur_traits == UndefinedPixelTrait))
           continue;
         if (((blur_traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(image,p) == 0))
+            (GetPixelWriteMask(image,p) == 0))
           {
             SetPixelChannel(blur_image,channel,p[i],q);
             continue;
           }
         gamma=0.0;
         pixel=0.0;
-        if ((GetPixelChannelTraits(image,AlphaChannel) == UndefinedPixelTrait) ||
+        if ((GetPixelChannelTraits(image,AlphaPixelChannel) == UndefinedPixelTrait) ||
             (channel == AlphaPixelChannel))
           {
             for (j=0; j < (ssize_t) n; j+=(ssize_t) step)
@@ -3249,7 +3249,7 @@ MagickExport Image *SelectiveBlurImage(const Image *image,const double radius,
             (blur_traits == UndefinedPixelTrait))
           continue;
         if (((blur_traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(image,p+center) == 0))
+            (GetPixelWriteMask(image,p+center) == 0))
           {
             SetPixelChannel(blur_image,channel,p[center+i],q);
             continue;
@@ -3541,7 +3541,7 @@ MagickExport Image *ShadeImage(const Image *image,const MagickBooleanType gray,
             (shade_traits == UndefinedPixelTrait))
           continue;
         if (((shade_traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(linear_image,center) == 0))
+            (GetPixelWriteMask(linear_image,center) == 0))
           {
             SetPixelChannel(shade_image,channel,center[i],q);
             continue;
@@ -3982,7 +3982,7 @@ MagickExport Image *UnsharpMaskImage(const Image *image,const double radius,
             (unsharp_traits == UndefinedPixelTrait))
           continue;
         if (((unsharp_traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(image,p) == 0))
+            (GetPixelWriteMask(image,p) == 0))
           {
             SetPixelChannel(unsharp_image,channel,p[i],q);
             continue;

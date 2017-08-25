@@ -17,13 +17,13 @@
 %                                 July 2000                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -168,6 +168,8 @@ static const MagicMapInfo
     { "PAM", 0, MagicPattern("P7") },
     { "PFM", 0, MagicPattern("PF") },
     { "PFM", 0, MagicPattern("Pf") },
+    { "PGX", 0, MagicPattern("PG ML") },
+    { "PGX", 0, MagicPattern("PG LM") },
     { "PS", 0, MagicPattern("%!") },
     { "PS", 0, MagicPattern("\004%!") },
     { "PS", 0, MagicPattern("\305\320\323\306") },
@@ -198,9 +200,7 @@ static const MagicMapInfo
     { "XBM", 0, MagicPattern("#define") },
     { "XCF", 0, MagicPattern("gimp xcf") },
     { "XEF", 0, MagicPattern("FOVb") },
-    { "XPM", 1, MagicPattern("* XPM *") },
-    { "XWD", 4, MagicPattern("\007\000\000") },
-    { "XWD", 5, MagicPattern("\000\000\007") }
+    { "XPM", 1, MagicPattern("* XPM *") }
  };
 
 static LinkedListInfo
@@ -758,7 +758,6 @@ MagickExport MagickBooleanType ListMagicInfo(FILE *file,
   magic_info=GetMagicInfoList("*",&number_aliases,exception);
   if (magic_info == (const MagicInfo **) NULL)
     return(MagickFalse);
-  j=0;
   path=(const char *) NULL;
   for (i=0; i < (ssize_t) number_aliases; i++)
   {
@@ -781,9 +780,6 @@ MagickExport MagickBooleanType ListMagicInfo(FILE *file,
     (void) FormatLocaleFile(file,"%6ld ",(long) magic_info[i]->offset);
     if (magic_info[i]->target != (char *) NULL)
       {
-        register ssize_t
-          j;
-
         for (j=0; magic_info[i]->target[j] != '\0'; j++)
           if (isprint((int) ((unsigned char) magic_info[i]->target[j])) != 0)
             (void) FormatLocaleFile(file,"%c",magic_info[i]->target[j]);
@@ -944,7 +940,8 @@ static MagickBooleanType LoadMagicCache(LinkedListInfo *cache,const char *xml,
       }
     if (magic_info == (MagicInfo *) NULL)
       continue;
-    if (LocaleCompare(keyword,"/>") == 0)
+    if ((LocaleCompare(keyword,"/>") == 0) ||
+        (LocaleCompare(keyword,"</policy>") == 0))
       {
         status=InsertValueInSortedLinkedList(cache,CompareMagickInfoSize,
           NULL,magic_info);
@@ -1001,7 +998,7 @@ static MagickBooleanType LoadMagicCache(LinkedListInfo *cache,const char *xml,
               *p;
 
             register unsigned char
-              *q;
+              *r;
 
             size_t
               length;
@@ -1009,7 +1006,7 @@ static MagickBooleanType LoadMagicCache(LinkedListInfo *cache,const char *xml,
             length=strlen(token);
             magic_info->target=ConstantString(token);
             magic_info->magic=(unsigned char *) ConstantString(token);
-            q=magic_info->magic;
+            r=magic_info->magic;
             for (p=magic_info->target; *p != '\0'; )
             {
               if (*p == '\\')
@@ -1020,32 +1017,32 @@ static MagickBooleanType LoadMagicCache(LinkedListInfo *cache,const char *xml,
                       char
                         *end;
 
-                      *q++=(unsigned char) strtol(p,&end,8);
+                      *r++=(unsigned char) strtol(p,&end,8);
                       p+=(end-p);
                       magic_info->length++;
                       continue;
                     }
                   switch (*p)
                   {
-                    case 'b': *q='\b'; break;
-                    case 'f': *q='\f'; break;
-                    case 'n': *q='\n'; break;
-                    case 'r': *q='\r'; break;
-                    case 't': *q='\t'; break;
-                    case 'v': *q='\v'; break;
-                    case 'a': *q='a'; break;
-                    case '?': *q='\?'; break;
-                    default: *q=(unsigned char) (*p); break;
+                    case 'b': *r='\b'; break;
+                    case 'f': *r='\f'; break;
+                    case 'n': *r='\n'; break;
+                    case 'r': *r='\r'; break;
+                    case 't': *r='\t'; break;
+                    case 'v': *r='\v'; break;
+                    case 'a': *r='a'; break;
+                    case '?': *r='\?'; break;
+                    default: *r=(unsigned char) (*p); break;
                   }
                   p++;
-                  q++;
+                  r++;
                   magic_info->length++;
                   continue;
                 }
               else
                 if (LocaleNCompare(p,"&amp;",5) == 0)
                   (void) CopyMagickString(p+1,p+5,length-magic_info->length);
-              *q++=(unsigned char) (*p++);
+              *r++=(unsigned char) (*p++);
               magic_info->length++;
             }
             break;

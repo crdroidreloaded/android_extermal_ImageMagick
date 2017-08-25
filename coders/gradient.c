@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -132,7 +132,8 @@ static Image *ReadGRADIENTImage(const ImageInfo *image_info,
   if (image == (Image *) NULL)
     return((Image *) NULL);
   (void) SetImageAlpha(image,(Quantum) TransparentAlpha,exception);
-  (void) CopyMagickString(image->filename,image_info->filename,MagickPathExtent);
+  (void) CopyMagickString(image->filename,image_info->filename,
+    MagickPathExtent);
   icc_color=MagickFalse;
   if (LocaleCompare(colorname,"icc") == 0)
     {
@@ -145,7 +146,8 @@ static Image *ReadGRADIENTImage(const ImageInfo *image_info,
     ThrowReaderException(ResourceLimitError,"MemoryAllocationFailed");
   stops[0].offset=0.0;
   stops[1].offset=1.0;
-  status=QueryColorCompliance(colorname,AllCompliance,&stops[0].color,exception);
+  status=QueryColorCompliance(colorname,AllCompliance,&stops[0].color,
+    exception);
   if (status == MagickFalse)
     {
       stops=(StopInfo *) RelinquishMagickMemory(stops);
@@ -160,7 +162,8 @@ static Image *ReadGRADIENTImage(const ImageInfo *image_info,
     (void) sscanf(image_info->filename,"%*[^-]-%[^-]",colorname);
   else
     (void) sscanf(image_info->filename,"%*[^-]-%*[^-]-%[^-]",colorname);
-  status=QueryColorCompliance(colorname,AllCompliance,&stops[1].color,exception);
+  status=QueryColorCompliance(colorname,AllCompliance,&stops[1].color,
+    exception);
   if (status == MagickFalse)
     {
       stops=(StopInfo *) RelinquishMagickMemory(stops);

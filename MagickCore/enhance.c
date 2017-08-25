@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -325,9 +325,9 @@ MagickExport MagickBooleanType ClutImage(Image *image,const Image *clut_image,
     (void) LogMagickEvent(TraceEvent,GetMagickModule(),"%s",image->filename);
   assert(clut_image != (Image *) NULL);
   assert(clut_image->signature == MagickCoreSignature);
-  if( SetImageStorageClass(image,DirectClass,exception) == MagickFalse)
+  if (SetImageStorageClass(image,DirectClass,exception) == MagickFalse)
     return(MagickFalse);
-  if( (IsGrayColorspace(image->colorspace) != MagickFalse) &&
+  if ((IsGrayColorspace(image->colorspace) != MagickFalse) &&
       (IsGrayColorspace(clut_image->colorspace) == MagickFalse))
     (void) SetImageColorspace(image,sRGBColorspace,exception);
   clut_map=(PixelInfo *) AcquireQuantumMemory(MaxMap+1UL,sizeof(*clut_map));
@@ -379,7 +379,7 @@ MagickExport MagickBooleanType ClutImage(Image *image,const Image *clut_image,
       PixelTrait
         traits;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -1233,7 +1233,7 @@ MagickExport MagickBooleanType ContrastStretchImage(Image *image,
       register ssize_t
         j;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -1415,7 +1415,7 @@ MagickExport Image *EnhanceImage(const Image *image,ExceptionInfo *exception)
       register const Quantum
         *magick_restrict r;
 
-      if (GetPixelReadMask(image,p) == 0)
+      if (GetPixelWriteMask(image,p) == 0)
         {
           SetPixelBackgoundColor(enhance_image,q);
           p+=GetPixelChannels(image);
@@ -1703,7 +1703,7 @@ MagickExport MagickBooleanType EqualizeImage(Image *image,
       register ssize_t
         j;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -1885,7 +1885,7 @@ MagickExport MagickBooleanType GammaImage(Image *image,const double gamma,
       register ssize_t
         j;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -2024,7 +2024,7 @@ MagickExport MagickBooleanType GrayscaleImage(Image *image,
         red,
         intensity;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -2458,7 +2458,7 @@ MagickExport MagickBooleanType LevelImage(Image *image,const double black_point,
       register ssize_t
         j;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -2614,7 +2614,7 @@ MagickExport MagickBooleanType LevelizeImage(Image *image,
       register ssize_t
         j;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -2947,11 +2947,7 @@ static inline void ModulateHCL(const double percent_hue,
     Increase or decrease color luma, chroma, or hue.
   */
   ConvertRGBToHCL(*red,*green,*blue,&hue,&chroma,&luma);
-  hue+=0.5*(0.01*percent_hue-1.0);
-  while (hue < 0.0)
-    hue+=1.0;
-  while (hue > 1.0)
-    hue-=1.0;
+  hue+=fmod((percent_hue-100.0),200.0)/200.0;
   chroma*=0.01*percent_chroma;
   luma*=0.01*percent_luma;
   ConvertHCLToRGB(hue,chroma,luma,red,green,blue);
@@ -2970,11 +2966,7 @@ static inline void ModulateHCLp(const double percent_hue,
     Increase or decrease color luma, chroma, or hue.
   */
   ConvertRGBToHCLp(*red,*green,*blue,&hue,&chroma,&luma);
-  hue+=0.5*(0.01*percent_hue-1.0);
-  while (hue < 0.0)
-    hue+=1.0;
-  while (hue > 1.0)
-    hue-=1.0;
+  hue+=fmod((percent_hue-100.0),200.0)/200.0;
   chroma*=0.01*percent_chroma;
   luma*=0.01*percent_luma;
   ConvertHCLpToRGB(hue,chroma,luma,red,green,blue);
@@ -2993,11 +2985,7 @@ static inline void ModulateHSB(const double percent_hue,
     Increase or decrease color brightness, saturation, or hue.
   */
   ConvertRGBToHSB(*red,*green,*blue,&hue,&saturation,&brightness);
-  hue+=0.5*(0.01*percent_hue-1.0);
-  while (hue < 0.0)
-    hue+=1.0;
-  while (hue > 1.0)
-    hue-=1.0;
+  hue+=fmod((percent_hue-100.0),200.0)/200.0;
   saturation*=0.01*percent_saturation;
   brightness*=0.01*percent_brightness;
   ConvertHSBToRGB(hue,saturation,brightness,red,green,blue);
@@ -3016,11 +3004,7 @@ static inline void ModulateHSI(const double percent_hue,
     Increase or decrease color intensity, saturation, or hue.
   */
   ConvertRGBToHSI(*red,*green,*blue,&hue,&saturation,&intensity);
-  hue+=0.5*(0.01*percent_hue-1.0);
-  while (hue < 0.0)
-    hue+=1.0;
-  while (hue > 1.0)
-    hue-=1.0;
+  hue+=fmod((percent_hue-100.0),200.0)/200.0;
   saturation*=0.01*percent_saturation;
   intensity*=0.01*percent_intensity;
   ConvertHSIToRGB(hue,saturation,intensity,red,green,blue);
@@ -3039,11 +3023,7 @@ static inline void ModulateHSL(const double percent_hue,
     Increase or decrease color lightness, saturation, or hue.
   */
   ConvertRGBToHSL(*red,*green,*blue,&hue,&saturation,&lightness);
-  hue+=0.5*(0.01*percent_hue-1.0);
-  while (hue < 0.0)
-    hue+=1.0;
-  while (hue >= 1.0)
-    hue-=1.0;
+  hue+=fmod((percent_hue-100.0),200.0)/200.0;
   saturation*=0.01*percent_saturation;
   lightness*=0.01*percent_lightness;
   ConvertHSLToRGB(hue,saturation,lightness,red,green,blue);
@@ -3062,11 +3042,7 @@ static inline void ModulateHSV(const double percent_hue,
     Increase or decrease color value, saturation, or hue.
   */
   ConvertRGBToHSV(*red,*green,*blue,&hue,&saturation,&value);
-  hue+=0.5*(0.01*percent_hue-1.0);
-  while (hue < 0.0)
-    hue+=1.0;
-  while (hue >= 1.0)
-    hue-=1.0;
+  hue+=fmod((percent_hue-100.0),200.0)/200.0;
   saturation*=0.01*percent_saturation;
   value*=0.01*percent_value;
   ConvertHSVToRGB(hue,saturation,value,red,green,blue);
@@ -3085,11 +3061,7 @@ static inline void ModulateHWB(const double percent_hue,
     Increase or decrease color blackness, whiteness, or hue.
   */
   ConvertRGBToHWB(*red,*green,*blue,&hue,&whiteness,&blackness);
-  hue+=0.5*(0.01*percent_hue-1.0);
-  while (hue < 0.0)
-    hue+=1.0;
-  while (hue >= 1.0)
-    hue-=1.0;
+  hue+=fmod((percent_hue-100.0),200.0)/200.0;
   blackness*=0.01*percent_blackness;
   whiteness*=0.01*percent_whiteness;
   ConvertHWBToRGB(hue,whiteness,blackness,red,green,blue);
@@ -3110,11 +3082,7 @@ static inline void ModulateLCHab(const double percent_luma,
   ConvertRGBToLCHab(*red,*green,*blue,&luma,&chroma,&hue);
   luma*=0.01*percent_luma;
   chroma*=0.01*percent_chroma;
-  hue+=0.5*(0.01*percent_hue-1.0);
-  while (hue < 0.0)
-    hue+=1.0;
-  while (hue >= 1.0)
-    hue-=1.0;
+  hue+=fmod((percent_hue-100.0),200.0)/200.0;
   ConvertLCHabToRGB(luma,chroma,hue,red,green,blue);
 }
 
@@ -3133,11 +3101,7 @@ static inline void ModulateLCHuv(const double percent_luma,
   ConvertRGBToLCHuv(*red,*green,*blue,&luma,&chroma,&hue);
   luma*=0.01*percent_luma;
   chroma*=0.01*percent_chroma;
-  hue+=0.5*(0.01*percent_hue-1.0);
-  while (hue < 0.0)
-    hue+=1.0;
-  while (hue >= 1.0)
-    hue-=1.0;
+  hue+=fmod((percent_hue-100.0),200.0)/200.0;
   ConvertLCHuvToRGB(luma,chroma,hue,red,green,blue);
 }
 
@@ -3317,6 +3281,11 @@ MagickExport MagickBooleanType ModulateImage(Image *image,const char *modulate,
         green,
         red;
 
+      if (GetPixelWriteMask(image,q) == 0)
+        {
+          q+=GetPixelChannels(image);
+          continue;
+        }
       red=(double) GetPixelRed(image,q);
       green=(double) GetPixelGreen(image,q);
       blue=(double) GetPixelBlue(image,q);
@@ -3499,7 +3468,7 @@ MagickExport MagickBooleanType NegateImage(Image *image,
           register ssize_t
             j;
 
-          if ((GetPixelReadMask(image,q) == 0) ||
+          if ((GetPixelWriteMask(image,q) == 0) ||
               IsPixelGray(image,q) != MagickFalse)
             {
               q+=GetPixelChannels(image);
@@ -3563,7 +3532,7 @@ MagickExport MagickBooleanType NegateImage(Image *image,
       register ssize_t
         j;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;
@@ -3867,7 +3836,7 @@ MagickExport MagickBooleanType SigmoidalContrastImage(Image *image,
       register ssize_t
         i;
 
-      if (GetPixelReadMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) == 0)
         {
           q+=GetPixelChannels(image);
           continue;

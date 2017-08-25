@@ -22,13 +22,13 @@
 %                               January 2012                                  %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -109,7 +109,7 @@
 %
 */
 WandExport void ProcessScriptOptions(MagickCLI *cli_wand,const char *filename,
-  int argc,char **argv,int index)
+  int magick_unused(argc),char **magick_unused(argv),int magick_unused(index))
 {
   ScriptTokenInfo
     *token_info;
@@ -125,6 +125,9 @@ WandExport void ProcessScriptOptions(MagickCLI *cli_wand,const char *filename,
     *arg1,
     *arg2;
 
+  magick_unreferenced(argc);
+  magick_unreferenced(argv);
+  magick_unreferenced(index);
   assert(filename != (char *) NULL ); /* at least one argument - script name */
   assert(cli_wand != (MagickCLI *) NULL);
   assert(cli_wand->signature == MagickWandSignature);

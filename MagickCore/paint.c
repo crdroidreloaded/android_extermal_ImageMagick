@@ -17,13 +17,13 @@
 %                                 July 1998                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -320,10 +320,6 @@ MagickExport MagickBooleanType FloodfillPaintImage(Image *image,
     } while (x <= x2);
   }
   status=MagickTrue;
-#if defined(MAGICKCORE_OPENMP_SUPPORT)
-  #pragma omp parallel for schedule(static,4) shared(status) \
-    magick_threads(floodplane_image,image,floodplane_image->rows,1)
-#endif
   for (y=0; y < (ssize_t) image->rows; y++)
   {
     register const Quantum
@@ -438,8 +434,8 @@ MagickExport MagickBooleanType GradientImage(Image *image,
   artifact=GetImageArtifact(image,"gradient:bounding-box");
   if (artifact != (const char *) NULL)
     (void) ParseAbsoluteGeometry(artifact,&gradient->bounding_box);
-  gradient->gradient_vector.x2=(double) image->columns-1.0;
-  gradient->gradient_vector.y2=(double) image->rows-1.0;
+  gradient->gradient_vector.x2=(double) image->columns-1;
+  gradient->gradient_vector.y2=(double) image->rows-1;
   artifact=GetImageArtifact(image,"gradient:direction");
   if (artifact != (const char *) NULL)
     {
@@ -452,8 +448,8 @@ MagickExport MagickBooleanType GradientImage(Image *image,
       {
         case NorthWestGravity:
         {
-          gradient->gradient_vector.x1=(double) image->columns-1.0;
-          gradient->gradient_vector.y1=(double) image->rows-1.0;
+          gradient->gradient_vector.x1=(double) image->columns-1;
+          gradient->gradient_vector.y1=(double) image->rows-1;
           gradient->gradient_vector.x2=0.0;
           gradient->gradient_vector.y2=0.0;
           break;
@@ -461,7 +457,7 @@ MagickExport MagickBooleanType GradientImage(Image *image,
         case NorthGravity:
         {
           gradient->gradient_vector.x1=0.0;
-          gradient->gradient_vector.y1=(double) image->rows-1.0;
+          gradient->gradient_vector.y1=(double) image->rows-1;
           gradient->gradient_vector.x2=0.0;
           gradient->gradient_vector.y2=0.0;
           break;
@@ -469,14 +465,14 @@ MagickExport MagickBooleanType GradientImage(Image *image,
         case NorthEastGravity:
         {
           gradient->gradient_vector.x1=0.0;
-          gradient->gradient_vector.y1=(double) image->rows-1.0;
-          gradient->gradient_vector.x2=(double) image->columns-1.0;
+          gradient->gradient_vector.y1=(double) image->rows-1;
+          gradient->gradient_vector.x2=(double) image->columns-1;
           gradient->gradient_vector.y2=0.0;
           break;
         }
         case WestGravity:
         {
-          gradient->gradient_vector.x1=(double) image->columns-1.0;
+          gradient->gradient_vector.x1=(double) image->columns-1;
           gradient->gradient_vector.y1=0.0;
           gradient->gradient_vector.x2=0.0;
           gradient->gradient_vector.y2=0.0;
@@ -486,16 +482,16 @@ MagickExport MagickBooleanType GradientImage(Image *image,
         {
           gradient->gradient_vector.x1=0.0;
           gradient->gradient_vector.y1=0.0;
-          gradient->gradient_vector.x2=(double) image->columns-1.0;
+          gradient->gradient_vector.x2=(double) image->columns-1;
           gradient->gradient_vector.y2=0.0;
           break;
         }
         case SouthWestGravity:
         {
-          gradient->gradient_vector.x1=(double) image->columns-1.0;
+          gradient->gradient_vector.x1=(double) image->columns-1;
           gradient->gradient_vector.y1=0.0;
           gradient->gradient_vector.x2=0.0;
-          gradient->gradient_vector.y2=(double) image->rows-1.0;
+          gradient->gradient_vector.y2=(double) image->rows-1;
           break;
         }
         case SouthGravity:
@@ -503,15 +499,15 @@ MagickExport MagickBooleanType GradientImage(Image *image,
           gradient->gradient_vector.x1=0.0;
           gradient->gradient_vector.y1=0.0;
           gradient->gradient_vector.x2=0.0;
-          gradient->gradient_vector.y2=(double) image->columns-1.0;
+          gradient->gradient_vector.y2=(double) image->columns-1;
           break;
         }
         case SouthEastGravity:
         {
           gradient->gradient_vector.x1=0.0;
           gradient->gradient_vector.y1=0.0;
-          gradient->gradient_vector.x2=(double) image->columns-1.0;
-          gradient->gradient_vector.y2=(double) image->rows-1.0;
+          gradient->gradient_vector.x2=(double) image->columns-1;
+          gradient->gradient_vector.y2=(double) image->rows-1;
           break;
         }
         default:
@@ -830,7 +826,7 @@ MagickExport Image *OilPaintImage(const Image *image,const double radius,
             (paint_traits == UndefinedPixelTrait))
           continue;
         if (((paint_traits & CopyPixelTrait) != 0) ||
-            (GetPixelReadMask(linear_image,p) == 0))
+            (GetPixelWriteMask(linear_image,p) == 0))
           {
             SetPixelChannel(paint_image,channel,p[center+i],q);
             continue;
@@ -971,9 +967,33 @@ MagickExport MagickBooleanType OpaquePaintImage(Image *image,
     pixel=zero;
     for (x=0; x < (ssize_t) image->columns; x++)
     {
+      if (GetPixelWriteMask(image,q) == 0)
+        {
+          q+=GetPixelChannels(image);
+          continue;
+        }
       GetPixelInfoPixel(image,q,&pixel);
       if (IsFuzzyEquivalencePixelInfo(&pixel,&conform_target) != invert)
-        SetPixelViaPixelInfo(image,&conform_fill,q);
+        {
+          PixelTrait
+            traits;
+
+          traits=GetPixelChannelTraits(image,RedPixelChannel);
+          if ((traits & UpdatePixelTrait) != 0)
+            SetPixelRed(image,conform_fill.red,q);
+          traits=GetPixelChannelTraits(image,GreenPixelChannel);
+          if ((traits & UpdatePixelTrait) != 0)
+            SetPixelGreen(image,conform_fill.green,q);
+          traits=GetPixelChannelTraits(image,BluePixelChannel);
+          if ((traits & UpdatePixelTrait) != 0)
+            SetPixelBlue(image,conform_fill.blue,q);
+          traits=GetPixelChannelTraits(image,BlackPixelChannel);
+          if ((traits & UpdatePixelTrait) != 0)
+            SetPixelBlack(image,conform_fill.black,q);
+          traits=GetPixelChannelTraits(image,AlphaPixelChannel);
+          if ((traits & UpdatePixelTrait) != 0)
+            SetPixelAlpha(image,conform_fill.alpha,q);
+        }
       q+=GetPixelChannels(image);
     }
     if (SyncCacheViewAuthenticPixels(image_view,exception) == MagickFalse)
@@ -1098,6 +1118,11 @@ MagickExport MagickBooleanType TransparentPaintImage(Image *image,
     pixel=zero;
     for (x=0; x < (ssize_t) image->columns; x++)
     {
+      if (GetPixelWriteMask(image,q) == 0)
+        {
+          q+=GetPixelChannels(image);
+          continue;
+        }
       GetPixelInfoPixel(image,q,&pixel);
       if (IsFuzzyEquivalencePixelInfo(&pixel,target) != invert)
         SetPixelAlpha(image,opacity,q);
@@ -1228,6 +1253,11 @@ MagickExport MagickBooleanType TransparentPaintImageChroma(Image *image,
     GetPixelInfo(image,&pixel);
     for (x=0; x < (ssize_t) image->columns; x++)
     {
+      if (GetPixelWriteMask(image,q) == 0)
+        {
+          q+=GetPixelChannels(image);
+          continue;
+        }
       GetPixelInfoPixel(image,q,&pixel);
       match=((pixel.red >= low->red) && (pixel.red <= high->red) &&
         (pixel.green >= low->green) && (pixel.green <= high->green) &&

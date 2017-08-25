@@ -17,13 +17,13 @@
 %                                March 2001                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -442,7 +442,7 @@ static size_t GetBytesPerRow(const size_t columns,
     case 16:
     {
       if (pad == MagickFalse)
-        { 
+        {
           bytes_per_row=2*(((size_t) samples_per_pixel*columns*bits_per_pixel+
             15)/16);
           break;
@@ -1106,6 +1106,9 @@ static Image *ReadDPXImage(const ImageInfo *image_info,ExceptionInfo *exception)
           StringInfo
             *profile;
 
+           if (dpx.file.user_size > GetBlobSize(image))
+             ThrowReaderException(CorruptImageError,
+               "InsufficientImageDataInFile");
            profile=BlobToStringInfo((const unsigned char *) NULL,
              dpx.file.user_size-sizeof(dpx.user.id));
            if (profile == (StringInfo *) NULL)
@@ -1117,7 +1120,11 @@ static Image *ReadDPXImage(const ImageInfo *image_info,ExceptionInfo *exception)
         }
     }
   for ( ; offset < (MagickOffsetType) dpx.file.image_offset; offset++)
-    (void) ReadBlobByte(image);
+    if (ReadBlobByte(image) == EOF)
+      break;
+  if (EOFBlob(image) != MagickFalse)
+    ThrowFileException(exception,CorruptImageError,"UnexpectedEndOfFile",
+      image->filename);
   if (image_info->ping != MagickFalse)
     {
       (void) CloseBlob(image);
@@ -1142,7 +1149,8 @@ static Image *ReadDPXImage(const ImageInfo *image_info,ExceptionInfo *exception)
            offset=SeekBlob(image,data_offset,SEEK_SET);
          else
            for ( ; offset < data_offset; offset++)
-             (void) ReadBlobByte(image);
+             if (ReadBlobByte(image) == EOF)
+               break;
           if (offset != data_offset)
             ThrowReaderException(CorruptImageError,"UnableToReadImageData");
        }
@@ -1236,7 +1244,6 @@ static Image *ReadDPXImage(const ImageInfo *image_info,ExceptionInfo *exception)
         length;
 
       ssize_t
-        count,
         offset;
 
       if (status == MagickFalse)
@@ -1339,7 +1346,7 @@ ModuleExport size_t RegisterDPXImage(void)
   entry->encoder=(EncodeImageHandler *) WriteDPXImage;
   entry->magick=(IsImageFormatHandler *) IsDPX;
   entry->flags^=CoderAdjoinFlag;
-  entry->flags|=CoderSeekableStreamFlag;
+  entry->flags|=CoderDecoderSeekableStreamFlag;
   entry->note=ConstantString(DPXNote);
   (void) RegisterMagickInfo(entry);
   return(MagickImageCoderSignature);
@@ -1441,6 +1448,9 @@ static inline const char *GetDPXProperty(const Image *image,
 static MagickBooleanType WriteDPXImage(const ImageInfo *image_info,Image *image,
   ExceptionInfo *exception)
 {
+  char
+    *url;
+
   const char
     *value;
 
@@ -1566,8 +1576,9 @@ static MagickBooleanType WriteDPXImage(const ImageInfo *image_info,Image *image,
     dpx.file.timestamp);
   offset+=WriteBlob(image,sizeof(dpx.file.timestamp),(unsigned char *)
     dpx.file.timestamp);
-  (void) strncpy(dpx.file.creator,GetMagickVersion((size_t *) NULL),
-    sizeof(dpx.file.creator)-1);
+  url=GetMagickHomeURL();
+  (void) strncpy(dpx.file.creator,url,sizeof(dpx.file.creator)-1);
+  url=DestroyString(url);
   value=GetDPXProperty(image,"dpx:file.creator",exception);
   if (value != (const char *) NULL)
     (void) strncpy(dpx.file.creator,value,sizeof(dpx.file.creator)-1);

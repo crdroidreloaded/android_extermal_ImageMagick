@@ -17,13 +17,13 @@
 %                               August 2003                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the license.  You may  %
 %  obtain a copy of the license at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  unless required by applicable law or agreed to in writing, software        %
 %  distributed under the license is distributed on an "as is" basis,          %
@@ -752,8 +752,6 @@ MagickExport size_t CopyMagickString(char *destination,const char *source,
   register size_t
     n;
 
-  if (source == (const char *) NULL)
-    return(0);
   p=source;
   q=destination;
   for (n=length; n > 4; n-=4)
@@ -1085,6 +1083,10 @@ MagickExport ssize_t FormatMagickSize(const MagickSizeType size,
   const MagickBooleanType bi,const char *suffix,const size_t length,
   char *format)
 {
+  char
+    p[MagickPathExtent],
+    q[MagickPathExtent];
+
   const char
     **units;
 
@@ -1093,8 +1095,7 @@ MagickExport ssize_t FormatMagickSize(const MagickSizeType size,
     extent;
 
   register ssize_t
-    i,
-    j;
+    i;
 
   ssize_t
     count;
@@ -1121,20 +1122,26 @@ MagickExport ssize_t FormatMagickSize(const MagickSizeType size,
 #else
   extent=(double) size;
 #endif
+  (void) FormatLocaleString(p,MagickPathExtent,"%.*g",GetMagickPrecision(),
+    extent);
+  (void) FormatLocaleString(q,MagickPathExtent,"%.20g",extent);
+  if (strtod(p,(char **) NULL) == strtod(q,(char **) NULL))
+    {
+      if (suffix == (const char *) NULL)
+        count=FormatLocaleString(format,length,"%.20g%s",extent,units[0]);
+      else
+        count=FormatLocaleString(format,length,"%.20g%s%s",extent,units[0],
+          suffix);
+      return(count);
+    }
   for (i=0; (extent >= bytes) && (units[i+1] != (const char *) NULL); i++)
     extent/=bytes;
-  count=0;
-  for (j=2; j < 12; j++)
-  {
-    if (suffix == (const char *) NULL)
-      count=FormatLocaleString(format,length,"%.*g%s",(int) (i+j),extent,
-        units[i]);
-    else
-      count=FormatLocaleString(format,length,"%.*g%s%s",(int) (i+j),extent,
-        units[i],suffix);
-    if (strchr(format,'+') == (char *) NULL)
-      break;
-  }
+  if (suffix == (const char *) NULL)
+    count=FormatLocaleString(format,length,"%.*g%s",GetMagickPrecision(),
+      extent,units[i]);
+  else
+    count=FormatLocaleString(format,length,"%.*g%s%s",GetMagickPrecision(),
+      extent,units[i],suffix);
   return(count);
 }
 
@@ -1780,6 +1787,8 @@ MagickExport void SetStringInfoLength(StringInfo *string_info,
 {
   assert(string_info != (StringInfo *) NULL);
   assert(string_info->signature == MagickCoreSignature);
+  if (string_info->length == length)
+    return;
   if (~length < MagickPathExtent)
     ThrowFatalException(ResourceLimitFatalError,"MemoryAllocationFailed");
   string_info->length=length;

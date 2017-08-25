@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -678,7 +678,7 @@ static MagickBooleanType WriteYUVImage(const ImageInfo *image_info,Image *image,
             exception);
           if (s == (const Quantum *) NULL)
             break;
-          for (x=0; x < (ssize_t) yuv_image->columns; x++)
+          for (x=0; x < (ssize_t) yuv_image->columns; x+=2)
           {
             if (quantum == 1)
               {
@@ -706,7 +706,6 @@ static MagickBooleanType WriteYUVImage(const ImageInfo *image_info,Image *image,
               }
             p+=GetPixelChannels(yuv_image);
             s++;
-            x++;
           }
           if (image->previous == (Image *) NULL)
             {

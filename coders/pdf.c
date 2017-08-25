@@ -17,13 +17,13 @@
 %                                 July 1992                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -721,6 +721,16 @@ static Image *ReadPDFImage(const ImageInfo *image_info,ExceptionInfo *exception)
       MagickPathExtent);
   if (trimbox != MagickFalse)
     (void) ConcatenateMagickString(options,"-dUseTrimBox ",MagickPathExtent);
+  option=GetImageOption(image_info,"authenticate");
+  if (option != (char *) NULL)
+    {
+      char
+        passphrase[MagickPathExtent];
+
+      (void) FormatLocaleString(passphrase,MagickPathExtent,
+        "'-sPDFPassword=%s' ",option);
+      (void) ConcatenateMagickString(options,passphrase,MagickPathExtent);
+    }
   read_info=CloneImageInfo(image_info);
   *read_info->magick='\0';
   if (read_info->number_scenes != 0)
@@ -866,7 +876,6 @@ ModuleExport size_t RegisterPDFImage(void)
   entry->encoder=(EncodeImageHandler *) WritePDFImage;
   entry->flags^=CoderAdjoinFlag;
   entry->flags^=CoderBlobSupportFlag;
-  entry->flags|=CoderSeekableStreamFlag;
   entry->mime_type=ConstantString("application/pdf");
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("PDF","EPDF",
@@ -875,7 +884,6 @@ ModuleExport size_t RegisterPDFImage(void)
   entry->encoder=(EncodeImageHandler *) WritePDFImage;
   entry->flags^=CoderAdjoinFlag;
   entry->flags^=CoderBlobSupportFlag;
-  entry->flags|=CoderSeekableStreamFlag;
   entry->mime_type=ConstantString("application/pdf");
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("PDF","PDF","Portable Document Format");
@@ -883,7 +891,6 @@ ModuleExport size_t RegisterPDFImage(void)
   entry->encoder=(EncodeImageHandler *) WritePDFImage;
   entry->magick=(IsImageFormatHandler *) IsPDF;
   entry->flags^=CoderBlobSupportFlag;
-  entry->flags|=CoderSeekableStreamFlag;
   entry->mime_type=ConstantString("application/pdf");
   (void) RegisterMagickInfo(entry);
   entry=AcquireMagickInfo("PDF","PDFA","Portable Document Archive Format");
@@ -891,7 +898,6 @@ ModuleExport size_t RegisterPDFImage(void)
   entry->encoder=(EncodeImageHandler *) WritePDFImage;
   entry->magick=(IsImageFormatHandler *) IsPDF;
   entry->flags^=CoderBlobSupportFlag;
-  entry->flags|=CoderSeekableStreamFlag;
   entry->mime_type=ConstantString("application/pdf");
   (void) RegisterMagickInfo(entry);
   return(MagickImageCoderSignature);
@@ -1047,8 +1053,8 @@ static size_t UTF8ToUTF16(const unsigned char *utf8,wchar_t *utf16)
               return(0);
         q++;
       }
-      *q++='\0';
-      return(q-utf16);
+      *q++=(wchar_t) '\0';
+      return((size_t) (q-utf16));
     }
   /*
     Compute UTF-16 string length.
@@ -1077,7 +1083,7 @@ static size_t UTF8ToUTF16(const unsigned char *utf8,wchar_t *utf16)
        else
          return(0);
   }
-  return(p-utf8);
+  return((size_t) (p-utf8));
 }
 
 static wchar_t *ConvertUTF8ToUTF16(const unsigned char *source,size_t *length)
@@ -1199,16 +1205,22 @@ RestoreMSCWarning
   char
     basename[MagickPathExtent],
     buffer[MagickPathExtent],
+    *escape,
     date[MagickPathExtent],
     **labels,
-    page_geometry[MagickPathExtent];
+    page_geometry[MagickPathExtent],
+    *url;
 
   CompressionType
     compression;
 
   const char
+    *device,
     *option,
     *value;
+
+  const StringInfo
+    *profile;
 
   double
     pointsize;
@@ -1255,6 +1267,7 @@ RestoreMSCWarning
     x;
 
   size_t
+    channels,
     info_id,
     length,
     object,
@@ -1265,6 +1278,7 @@ RestoreMSCWarning
 
   ssize_t
     count,
+    page_count,
     y;
 
   struct tm
@@ -1312,6 +1326,9 @@ RestoreMSCWarning
       version=(size_t) MagickMax(version,4);
   if (LocaleCompare(image_info->magick,"PDFA") == 0)
     version=(size_t) MagickMax(version,6);
+  profile=GetImageProfile(image,"icc");
+  if (profile != (StringInfo *) NULL)
+    version=(size_t) MagickMax(version,7);
   (void) FormatLocaleString(buffer,MagickPathExtent,"%%PDF-1.%.20g \n",(double)
     version);
   (void) WriteBlobString(image,buffer);
@@ -1360,6 +1377,7 @@ RestoreMSCWarning
         create_date[MagickPathExtent],
         modify_date[MagickPathExtent],
         timestamp[MagickPathExtent],
+        *url,
         xmp_profile[MagickPathExtent];
 
       /*
@@ -1380,10 +1398,12 @@ RestoreMSCWarning
       if (value != (const char *) NULL)
         (void) CopyMagickString(create_date,value,MagickPathExtent);
       (void) FormatMagickTime(time((time_t *) NULL),MagickPathExtent,timestamp);
+      url=GetMagickHomeURL();
+      escape=EscapeParenthesis(basename);
       i=FormatLocaleString(xmp_profile,MagickPathExtent,XMPProfile,
-        XMPProfileMagick,modify_date,create_date,timestamp,
-        GetMagickVersion(&version),EscapeParenthesis(basename),
-        GetMagickVersion(&version));
+        XMPProfileMagick,modify_date,create_date,timestamp,url,escape,url);
+      escape=DestroyString(escape);
+      url=DestroyString(url);
       (void) FormatLocaleString(buffer,MagickPathExtent,"/Length %.20g\n",
         (double) i);
       (void) WriteBlobString(image,buffer);
@@ -1407,6 +1427,7 @@ RestoreMSCWarning
     (double) object+1);
   (void) WriteBlobString(image,buffer);
   count=(ssize_t) (pages_id+ObjectsPerImage+1);
+  page_count=1;
   if (image_info->adjoin != MagickFalse)
     {
       Image
@@ -1418,6 +1439,10 @@ RestoreMSCWarning
       kid_image=image;
       for ( ; GetNextImageInList(kid_image) != (Image *) NULL; count+=ObjectsPerImage)
       {
+        page_count++;
+        profile=GetImageProfile(kid_image,"icc");
+        if (profile != (StringInfo *) NULL)
+          count+=2;
         (void) FormatLocaleString(buffer,MagickPathExtent,"%.20g 0 R ",(double)
           count);
         (void) WriteBlobString(image,buffer);
@@ -1430,13 +1455,18 @@ RestoreMSCWarning
     }
   (void) WriteBlobString(image,"]\n");
   (void) FormatLocaleString(buffer,MagickPathExtent,"/Count %.20g\n",(double)
-    ((count-pages_id)/ObjectsPerImage));
+    page_count);
   (void) WriteBlobString(image,buffer);
   (void) WriteBlobString(image,">>\n");
   (void) WriteBlobString(image,"endobj\n");
   scene=0;
   do
   {
+    MagickBooleanType
+      has_icc_profile;
+
+    profile=GetImageProfile(image,"icc");
+    has_icc_profile=(profile != (StringInfo *) NULL) ? MagickTrue : MagickFalse;
     compression=image->compression;
     if (image_info->compression != UndefinedCompression)
       compression=image_info->compression;
@@ -1604,8 +1634,8 @@ RestoreMSCWarning
     (void) FormatLocaleString(buffer,MagickPathExtent,"/Contents %.20g 0 R\n",
       (double) object+1);
     (void) WriteBlobString(image,buffer);
-    (void) FormatLocaleString(buffer,MagickPathExtent,"/Thumb %.20g 0 R\n",(double)
-      object+8);
+    (void) FormatLocaleString(buffer,MagickPathExtent,"/Thumb %.20g 0 R\n",
+      (double) object+(has_icc_profile != MagickFalse ? 10 : 8));
     (void) WriteBlobString(image,buffer);
     (void) WriteBlobString(image,">>\n");
     (void) WriteBlobString(image,"endobj\n");
@@ -1659,8 +1689,8 @@ RestoreMSCWarning
     (void) FormatLocaleString(buffer,MagickPathExtent,"%.20g 0 obj\n",(double)
       object);
     (void) WriteBlobString(image,buffer);
-    (void) FormatLocaleString(buffer,MagickPathExtent,"%.20g\n",
-      (double) offset);
+    (void) FormatLocaleString(buffer,MagickPathExtent,"%.20g\n",(double)
+      offset);
     (void) WriteBlobString(image,buffer);
     (void) WriteBlobString(image,"endobj\n");
     /*
@@ -1711,14 +1741,15 @@ RestoreMSCWarning
     (void) WriteBlobString(image,"<<\n");
     (void) WriteBlobString(image,"/Type /XObject\n");
     (void) WriteBlobString(image,"/Subtype /Image\n");
-    (void) FormatLocaleString(buffer,MagickPathExtent,"/Name /Im%.20g\n",(double)
-      image->scene);
+    (void) FormatLocaleString(buffer,MagickPathExtent,"/Name /Im%.20g\n",
+      (double) image->scene);
     (void) WriteBlobString(image,buffer);
     switch (compression)
     {
       case NoCompression:
       {
-        (void) FormatLocaleString(buffer,MagickPathExtent,CFormat,"ASCII85Decode");
+        (void) FormatLocaleString(buffer,MagickPathExtent,CFormat,
+          "ASCII85Decode");
         break;
       }
       case JPEGCompression:
@@ -1787,7 +1818,7 @@ RestoreMSCWarning
     if (image->alpha_trait != UndefinedPixelTrait)
       {
         (void) FormatLocaleString(buffer,MagickPathExtent,"/SMask %.20g 0 R\n",
-          (double) object+7);
+          (double) object+(has_icc_profile != MagickFalse ? 9 : 7));
         (void) WriteBlobString(image,buffer);
       }
     (void) FormatLocaleString(buffer,MagickPathExtent,"/Length %.20g 0 R\n",
@@ -2147,24 +2178,81 @@ RestoreMSCWarning
     (void) FormatLocaleString(buffer,MagickPathExtent,"%.20g 0 obj\n",(double)
       object);
     (void) WriteBlobString(image,buffer);
+    device="DeviceRGB";
+    channels=0;
     if (image->colorspace == CMYKColorspace)
-      (void) CopyMagickString(buffer,"/DeviceCMYK\n",MagickPathExtent);
+      {
+        device="DeviceCMYK";
+        channels=4;
+      }
     else
       if ((compression == FaxCompression) ||
           (compression == Group4Compression) ||
           ((image_info->type != TrueColorType) &&
            (SetImageGray(image,exception) != MagickFalse)))
-          (void) CopyMagickString(buffer,"/DeviceGray\n",MagickPathExtent);
+        {
+          device="DeviceGray";
+          channels=1;
+        }
       else
-        if ((image->storage_class == DirectClass) || (image->colors > 256) ||
-            (compression == JPEGCompression) ||
+        if ((image->storage_class == DirectClass) ||
+            (image->colors > 256) || (compression == JPEGCompression) ||
             (compression == JPEG2000Compression))
-          (void) CopyMagickString(buffer,"/DeviceRGB\n",MagickPathExtent);
+          {
+            device="DeviceRGB";
+            channels=3;
+          }
+    profile=GetImageProfile(image,"icc");
+    if ((profile == (StringInfo *) NULL) || (channels == 0))
+      {
+        if (channels != 0)
+          (void) FormatLocaleString(buffer,MagickPathExtent,"/%s\n",device);
         else
           (void) FormatLocaleString(buffer,MagickPathExtent,
-            "[ /Indexed /DeviceRGB %.20g %.20g 0 R ]\n",(double) image->colors-
+            "[ /Indexed /%s %.20g %.20g 0 R ]\n",device,(double) image->colors-
             1,(double) object+3);
-    (void) WriteBlobString(image,buffer);
+        (void) WriteBlobString(image,buffer);
+      }
+    else
+      {
+        const unsigned char
+          *p;
+
+        /*
+          Write ICC profile. 
+        */
+        (void) FormatLocaleString(buffer,MagickPathExtent,
+          "[/ICCBased %.20g 0 R]\n",(double) object+1);
+        (void) WriteBlobString(image,buffer);
+        (void) WriteBlobString(image,"endobj\n");
+        xref[object++]=TellBlob(image);
+        (void) FormatLocaleString(buffer,MagickPathExtent,"%.20g 0 obj\n",
+          (double) object);
+        (void) WriteBlobString(image,buffer);
+        (void) FormatLocaleString(buffer,MagickPathExtent,"<<\n/N %.20g\n"
+          "/Filter /ASCII85Decode\n/Length %.20g 0 R\n/Alternate /%s\n>>\n"
+          "stream\n",(double) channels,(double) object+1,device);
+        (void) WriteBlobString(image,buffer);
+        offset=TellBlob(image);
+        Ascii85Initialize(image);
+        p=GetStringInfoDatum(profile);
+        for (i=0; i < (ssize_t) GetStringInfoLength(profile); i++)
+          Ascii85Encode(image,(unsigned char) *p++);
+        Ascii85Flush(image);
+        offset=TellBlob(image)-offset;
+        (void) WriteBlobString(image,"endstream\n");
+        (void) WriteBlobString(image,"endobj\n");
+        /*
+          Write Length object.
+        */
+        xref[object++]=TellBlob(image);
+        (void) FormatLocaleString(buffer,MagickPathExtent,"%.20g 0 obj\n",
+          (double) object);
+        (void) WriteBlobString(image,buffer);
+        (void) FormatLocaleString(buffer,MagickPathExtent,"%.20g\n",(double)
+          offset);
+        (void) WriteBlobString(image,buffer);
+      }
     (void) WriteBlobString(image,"endobj\n");
     /*
       Write Thumb object.
@@ -2245,7 +2333,7 @@ RestoreMSCWarning
       tile_image->rows);
     (void) WriteBlobString(image,buffer);
     (void) FormatLocaleString(buffer,MagickPathExtent,"/ColorSpace %.20g 0 R\n",
-      (double) object-1);
+      (double) object-(has_icc_profile != MagickFalse ? 3 : 1));
     (void) WriteBlobString(image,buffer);
     (void) FormatLocaleString(buffer,MagickPathExtent,"/BitsPerComponent %d\n",
       (compression == FaxCompression) || (compression == Group4Compression) ?
@@ -2817,7 +2905,7 @@ RestoreMSCWarning
       (void) FormatLocaleString(buffer,MagickPathExtent,"/Title (\xfe\xff");
       (void) WriteBlobString(image,buffer);
       for (i=0; i < (ssize_t) length; i++)
-        WriteBlobMSBShort(image,(unsigned short) utf16[i]);
+        (void) WriteBlobMSBShort(image,(unsigned short) utf16[i]);
       (void) FormatLocaleString(buffer,MagickPathExtent,")\n");
       (void) WriteBlobString(image,buffer);
       utf16=(wchar_t *) RelinquishMagickMemory(utf16);
@@ -2836,8 +2924,11 @@ RestoreMSCWarning
   (void) WriteBlobString(image,buffer);
   (void) FormatLocaleString(buffer,MagickPathExtent,"/ModDate (%s)\n",date);
   (void) WriteBlobString(image,buffer);
-  (void) FormatLocaleString(buffer,MagickPathExtent,"/Producer (%s)\n",
-    EscapeParenthesis(GetMagickVersion((size_t *) NULL)));
+  url=GetMagickHomeURL();
+  escape=EscapeParenthesis(url);
+  (void) FormatLocaleString(buffer,MagickPathExtent,"/Producer (%s)\n",escape);
+  escape=DestroyString(escape);
+  url=DestroyString(url);
   (void) WriteBlobString(image,buffer);
   (void) WriteBlobString(image,">>\n");
   (void) WriteBlobString(image,"endobj\n");

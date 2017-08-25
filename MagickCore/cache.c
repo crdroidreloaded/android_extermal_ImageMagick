@@ -17,13 +17,13 @@
 %                                 July 1999                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2016 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2017 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/script/license.php                            %
+%    https://www.imagemagick.org/script/license.php                           %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -156,6 +156,9 @@ static volatile MagickBooleanType
 static SemaphoreInfo
   *cache_semaphore = (SemaphoreInfo *) NULL;
 
+static ssize_t
+  cache_anonymous_memory = (-1);
+
 static time_t
   cache_epoch = 0;
 
@@ -187,7 +190,7 @@ MagickPrivate Cache AcquirePixelCache(const size_t number_threads)
     *magick_restrict cache_info;
 
   char
-    *synchronize;
+    *value;
 
   cache_info=(CacheInfo *) AcquireQuantumMemory(1,sizeof(*cache_info));
   if (cache_info == (CacheInfo *) NULL)
@@ -208,11 +211,17 @@ MagickPrivate Cache AcquirePixelCache(const size_t number_threads)
   cache_info->nexus_info=AcquirePixelCacheNexus(cache_info->number_threads);
   if (cache_info->nexus_info == (NexusInfo **) NULL)
     ThrowFatalException(ResourceLimitFatalError,"MemoryAllocationFailed");
-  synchronize=GetEnvironmentValue("MAGICK_SYNCHRONIZE");
-  if (synchronize != (const char *) NULL)
+  value=GetEnvironmentValue("MAGICK_SYNCHRONIZE");
+  if (value != (const char *) NULL)
     {
-      cache_info->synchronize=IsStringTrue(synchronize);
-      synchronize=DestroyString(synchronize);
+      cache_info->synchronize=IsStringTrue(value);
+      value=DestroyString(value);
+    }
+  value=GetPolicyValue("cache:synchronize");
+  if (value != (const char *) NULL)
+    {
+      cache_info->synchronize=IsStringTrue(value);
+      value=DestroyString(value);
     }
   cache_info->semaphore=AcquireSemaphoreInfo();
   cache_info->reference_count=1;
@@ -503,7 +512,7 @@ static MagickBooleanType ClonePixelCacheOnDisk(
     *buffer;
 
   /*
-    Clone pixel cache on disk with identifcal morphology.
+    Clone pixel cache on disk with identical morphology.
   */
   if ((OpenPixelCacheOnDisk(cache_info,ReadMode) == MagickFalse) ||
       (OpenPixelCacheOnDisk(clone_info,IOMode) == MagickFalse))
@@ -881,7 +890,8 @@ static inline void RelinquishPixelCachePixels(CacheInfo *cache_info)
         }
 #endif
       if (cache_info->mapped == MagickFalse)
-        cache_info->pixels=RelinquishAlignedMemory(cache_info->pixels);
+        cache_info->pixels=(Quantum *) RelinquishAlignedMemory(
+          cache_info->pixels);
       else
         (void) UnmapBlob(cache_info->pixels,(size_t) cache_info->length);
       RelinquishMagickResource(MemoryResource,cache_info->length);
@@ -2622,6 +2632,9 @@ MagickPrivate const Quantum *GetVirtualPixelsFromNexus(const Image *image,
   assert(cache_info->signature == MagickCoreSignature);
   if (cache_info->type == UndefinedCache)
     return((const Quantum *) NULL);
+#if defined(MAGICKCORE_OPENCL_SUPPORT)
+  CopyOpenCLBuffer(cache_info);
+#endif
   region.x=x;
   region.y=y;
   region.width=columns;
@@ -2666,8 +2679,6 @@ MagickPrivate const Quantum *GetVirtualPixelsFromNexus(const Image *image,
   virtual_nexus=AcquirePixelCacheNexus(1);
   if (virtual_nexus == (NexusInfo **) NULL)
     {
-      if (virtual_nexus != (NexusInfo **) NULL)
-        virtual_nexus=DestroyPixelCacheNexus(virtual_nexus,1);
       (void) ThrowMagickException(exception,GetMagickModule(),CacheError,
         "UnableToGetCacheNexus","`%s'",image->filename);
       return((const Quantum *) NULL);
@@ -2710,7 +2721,7 @@ MagickPrivate const Quantum *GetVirtualPixelsFromNexus(const Image *image,
         case BlackVirtualPixelMethod:
         {
           for (i=0; i < (ssize_t) cache_info->number_channels; i++)
-            SetPixelChannel(image,(PixelChannel) i,0,virtual_pixel);
+            SetPixelChannel(image,(PixelChannel) i,(Quantum) 0,virtual_pixel);
           SetPixelAlpha(image,OpaqueAlpha,virtual_pixel);
           break;
         }
@@ -2725,7 +2736,7 @@ MagickPrivate const Quantum *GetVirtualPixelsFromNexus(const Image *image,
         case TransparentVirtualPixelMethod:
         {
           for (i=0; i < (ssize_t) cache_info->number_channels; i++)
-            SetPixelChannel(image,(PixelChannel) i,0,virtual_pixel);
+            SetPixelChannel(image,(PixelChannel) i,(Quantum) 0,virtual_pixel);
           SetPixelAlpha(image,TransparentAlpha,virtual_pixel);
           break;
         }
@@ -3311,7 +3322,6 @@ static MagickBooleanType OpenPixelCacheOnDisk(CacheInfo *cache_info,
   if (cache_info->file != -1)
     (void) ClosePixelCacheOnDisk(cache_info);
   cache_info->file=file;
-  cache_info->mode=mode;
   return(MagickTrue);
 }
 
@@ -3384,6 +3394,8 @@ static MagickBooleanType SetPixelCacheExtent(Image *image,MagickSizeType length)
       extent=(MagickOffsetType) length-1;
       count=WritePixelCacheRegion(cache_info,extent,1,(const unsigned char *)
         "");
+      if (count != 1)
+        return(MagickFalse);
 #if defined(MAGICKCORE_HAVE_POSIX_FALLOCATE)
       if (cache_info->synchronize != MagickFalse)
         (void) posix_fallocate(cache_info->file,offset+1,extent-offset);
@@ -3395,7 +3407,7 @@ static MagickBooleanType SetPixelCacheExtent(Image *image,MagickSizeType length)
   offset=(MagickOffsetType) lseek(cache_info->file,0,SEEK_SET);
   if (offset < 0)
     return(MagickFalse);
-  return(count != (MagickOffsetType) 1 ? MagickFalse : MagickTrue);
+  return(MagickTrue);
 }
 
 static MagickBooleanType OpenPixelCache(Image *image,const MapMode mode,
@@ -3428,6 +3440,30 @@ static MagickBooleanType OpenPixelCache(Image *image,const MapMode mode,
   assert(image->cache != (Cache) NULL);
   if (image->debug != MagickFalse)
     (void) LogMagickEvent(TraceEvent,GetMagickModule(),"%s",image->filename);
+  if (cache_anonymous_memory < 0)
+    {
+      char
+        *value;
+
+      /*
+        Does the security policy require anonymous mapping for pixel cache?
+      */
+      cache_anonymous_memory=0;
+      value=GetPolicyValue("pixel-cache-memory");
+      if (value == (char *) NULL)
+        value=GetPolicyValue("cache:memory-map");
+      if (LocaleCompare(value,"anonymous") == 0)
+        {
+#if defined(MAGICKCORE_HAVE_MMAP) && defined(MAP_ANONYMOUS)
+          cache_anonymous_memory=1;
+#else
+          (void) ThrowMagickException(exception,GetMagickModule(),
+            MissingDelegateError,"DelegateLibrarySupportNotBuiltIn",
+            "'%s' (policy requires anonymous memory mapping)",image->filename);
+#endif
+        }
+      value=DestroyString(value);
+    }
   if ((image->columns == 0) || (image->rows == 0))
     ThrowBinaryException(CacheError,"NoPixelsDefinedInCache",image->filename);
   cache_info=(CacheInfo *) image->cache;
@@ -3481,9 +3517,18 @@ static MagickBooleanType OpenPixelCache(Image *image,const MapMode mode,
           (cache_info->type == MemoryCache))
         {
           status=MagickTrue;
-          cache_info->mapped=MagickFalse;
-          cache_info->pixels=(Quantum *) MagickAssumeAligned(
-            AcquireAlignedMemory(1,(size_t) cache_info->length));
+          if (cache_anonymous_memory <= 0)
+            {
+              cache_info->mapped=MagickFalse;
+              cache_info->pixels=(Quantum *) MagickAssumeAligned(
+                AcquireAlignedMemory(1,(size_t) cache_info->length));
+            }
+          else
+            {
+              cache_info->mapped=MagickTrue;
+              cache_info->pixels=(Quantum *) MapBlob(-1,IOMode,0,(size_t)
+                cache_info->length);
+            }
           if (cache_info->pixels == (Quantum *) NULL)
             cache_info->pixels=source_info.pixels;
           else
@@ -3775,34 +3820,6 @@ MagickExport MagickBooleanType PersistPixelCache(Image *image,
         return(MagickFalse);
       *offset+=cache_info->length+page_size-(cache_info->length % page_size);
       return(MagickTrue);
-    }
-  if ((cache_info->mode != ReadMode) &&
-      ((cache_info->type == DiskCache) || (cache_info->type == MapCache)) &&
-      (cache_info->reference_count == 1))
-    {
-      LockSemaphoreInfo(cache_info->semaphore);
-      if ((cache_info->mode != ReadMode) &&
-          ((cache_info->type == DiskCache) || (cache_info->type == MapCache)) &&
-          (cache_info->reference_count == 1))
-        {
-          /*
-            Usurp existing persistent pixel cache.
-          */
-          if (rename_utf8(cache_info->cache_filename, filename) == 0)
-            {
-              (void) CopyMagickString(cache_info->cache_filename,filename,
-                MagickPathExtent);
-              *offset+=cache_info->length+page_size-(cache_info->length %
-                page_size);
-              UnlockSemaphoreInfo(cache_info->semaphore);
-              cache_info=(CacheInfo *) ReferencePixelCache(cache_info);
-              if (image->debug != MagickFalse)
-                (void) LogMagickEvent(CacheEvent,GetMagickModule(),
-                  "Usurp resident persistent cache");
-              return(MagickTrue);
-            }
-        }
-      UnlockSemaphoreInfo(cache_info->semaphore);
     }
   /*
     Clone persistent pixel cache.
@@ -4483,7 +4500,42 @@ MagickPrivate Cache ReferencePixelCache(Cache cache)
 %                                                                             %
 %                                                                             %
 %                                                                             %
-+   R e s e t P i x e l C a c h e E p o c h e                                 %
++   R e s e t P i x e l C a c h e C h a n n e l s                             %
+%                                                                             %
+%                                                                             %
+%                                                                             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  ResetPixelCacheChannels() resets the pixel cache channels.
+%
+%  The format of the ResetPixelCacheChannels method is:
+%
+%      void ResetPixelCacheChannels(Image *)
+%
+%  A description of each parameter follows:
+%
+%    o image: the image.
+%
+*/
+MagickPrivate void ResetPixelCacheChannels(Image *image)
+{
+  CacheInfo
+    *magick_restrict cache_info;
+
+  assert(image != (const Image *) NULL);
+  assert(image->signature == MagickCoreSignature);
+  assert(image->cache != (Cache) NULL);
+  cache_info=(CacheInfo *) image->cache;
+  assert(cache_info->signature == MagickCoreSignature);
+  cache_info->number_channels=GetPixelChannels(image);
+}
+
+/*
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                                             %
+%                                                                             %
+%                                                                             %
++   R e s e t P i x e l C a c h e E p o c h                                   %
 %                                                                             %
 %                                                                             %
 %                                                                             %
@@ -4631,10 +4683,16 @@ static inline MagickBooleanType AcquireCacheNexusPixels(
 {
   if (nexus_info->length != (MagickSizeType) ((size_t) nexus_info->length))
     return(MagickFalse);
-  nexus_info->mapped=MagickFalse;
-  nexus_info->cache=(Quantum *) MagickAssumeAligned(AcquireAlignedMemory(1,
-    (size_t) nexus_info->length));
-  if (nexus_info->cache == (Quantum *) NULL)
+  if (cache_anonymous_memory <= 0)
+    {
+      nexus_info->mapped=MagickFalse;
+      nexus_info->cache=(Quantum *) MagickAssumeAligned(AcquireAlignedMemory(1,
+        (size_t) nexus_info->length));
+      if (nexus_info->cache != (Quantum *) NULL)
+        (void) ResetMagickMemory(nexus_info->cache,0,(size_t)
+          nexus_info->length);
+    }
+  else
     {
       nexus_info->mapped=MagickTrue;
       nexus_info->cache=(Quantum *) MapBlob(-1,IOMode,0,(size_t)
@@ -4927,6 +4985,7 @@ MagickPrivate VirtualPixelMethod SetPixelCacheVirtualMethod(Image *image,
 %    o image: the image.
 %
 */
+
 static void CopyOpenCLBuffer(CacheInfo *magick_restrict cache_info)
 {
   assert(cache_info != (CacheInfo *) NULL);

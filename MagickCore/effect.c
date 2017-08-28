@@ -336,7 +336,7 @@ MagickExport Image *AdaptiveBlurImage(const Image *image,const double radius,
             (blur_traits == UndefinedPixelTrait))
           continue;
         if (((blur_traits & CopyPixelTrait) != 0) ||
-            (GetPixelWriteMask(image,p+center) == 0))
+            (GetPixelWriteMask(image,p+center) <= (QuantumRange/2)))
           {
             SetPixelChannel(blur_image,channel,p[center+i],q);
             continue;
@@ -657,7 +657,7 @@ MagickExport Image *AdaptiveSharpenImage(const Image *image,const double radius,
             (sharp_traits == UndefinedPixelTrait))
           continue;
         if (((sharp_traits & CopyPixelTrait) != 0) ||
-            (GetPixelWriteMask(image,p+center) == 0))
+            (GetPixelWriteMask(image,p+center) <= (QuantumRange/2)))
           {
             SetPixelChannel(sharp_image,channel,p[center+i],q);
             continue;
@@ -2136,7 +2136,7 @@ MagickExport Image *MotionBlurImage(const Image *image,const double radius,
             (blur_traits == UndefinedPixelTrait))
           continue;
         if (((blur_traits & CopyPixelTrait) != 0) ||
-            (GetPixelWriteMask(image,p) == 0))
+            (GetPixelWriteMask(image,p) <= (QuantumRange/2)))
           {
             SetPixelChannel(blur_image,channel,p[i],q);
             continue;
@@ -2369,7 +2369,8 @@ MagickExport Image *PreviewImage(const Image *image,const PreviewType preview,
         preview_image=CloneImage(thumbnail,0,0,MagickTrue,exception);
         if (preview_image == (Image *) NULL)
           break;
-        (void) FormatLocaleString(factor,MagickPathExtent,"100,%g",2.0*percentage);
+        (void) FormatLocaleString(factor,MagickPathExtent,"100,%g",2.0*
+          percentage);
         (void) ModulateImage(preview_image,factor,exception);
         (void) FormatLocaleString(label,MagickPathExtent,"modulate %s",factor);
         break;
@@ -2437,8 +2438,8 @@ MagickExport Image *PreviewImage(const Image *image,const PreviewType preview,
         colors<<=1;
         quantize_info.number_colors=colors;
         (void) QuantizeImage(&quantize_info,preview_image,exception);
-        (void) FormatLocaleString(label,MagickPathExtent,"colors %.20g",(double)
-          colors);
+        (void) FormatLocaleString(label,MagickPathExtent,"colors %.20g",
+          (double) colors);
         break;
       }
       case DespecklePreview:
@@ -2460,8 +2461,8 @@ MagickExport Image *PreviewImage(const Image *image,const PreviewType preview,
       }
       case ReduceNoisePreview:
       {
-        preview_image=StatisticImage(thumbnail,NonpeakStatistic,(size_t) radius,
-          (size_t) radius,exception);
+        preview_image=StatisticImage(thumbnail,NonpeakStatistic,(size_t)
+          radius,(size_t) radius,exception);
         (void) FormatLocaleString(label,MagickPathExtent,"noise %g",radius);
         break;
       }
@@ -2513,8 +2514,8 @@ MagickExport Image *PreviewImage(const Image *image,const PreviewType preview,
       case SharpenPreview:
       {
         preview_image=SharpenImage(thumbnail,radius,sigma,exception);
-        (void) FormatLocaleString(label,MagickPathExtent,"sharpen %gx%g",radius,
-          sigma);
+        (void) FormatLocaleString(label,MagickPathExtent,"sharpen %gx%g",
+          radius,sigma);
         break;
       }
       case BlurPreview:
@@ -2531,8 +2532,8 @@ MagickExport Image *PreviewImage(const Image *image,const PreviewType preview,
           break;
         (void) BilevelImage(thumbnail,(double) (percentage*((double)
           QuantumRange+1.0))/100.0,exception);
-        (void) FormatLocaleString(label,MagickPathExtent,"threshold %g",(double)
-          (percentage*((double) QuantumRange+1.0))/100.0);
+        (void) FormatLocaleString(label,MagickPathExtent,"threshold %g",
+          (double) (percentage*((double) QuantumRange+1.0))/100.0);
         break;
       }
       case EdgeDetectPreview:
@@ -2617,24 +2618,24 @@ MagickExport Image *PreviewImage(const Image *image,const PreviewType preview,
         degrees+=5.0f;
         preview_image=WaveImage(thumbnail,0.5*degrees,2.0*degrees,
           image->interpolate,exception);
-        (void) FormatLocaleString(label,MagickPathExtent,"wave %gx%g",0.5*degrees,
-          2.0*degrees);
+        (void) FormatLocaleString(label,MagickPathExtent,"wave %gx%g",0.5*
+          degrees,2.0*degrees);
         break;
       }
       case OilPaintPreview:
       {
         preview_image=OilPaintImage(thumbnail,(double) radius,(double) sigma,
           exception);
-        (void) FormatLocaleString(label,MagickPathExtent,"charcoal %gx%g",radius,
-          sigma);
+        (void) FormatLocaleString(label,MagickPathExtent,"charcoal %gx%g",
+          radius,sigma);
         break;
       }
       case CharcoalDrawingPreview:
       {
         preview_image=CharcoalImage(thumbnail,(double) radius,(double) sigma,
           exception);
-        (void) FormatLocaleString(label,MagickPathExtent,"charcoal %gx%g",radius,
-          sigma);
+        (void) FormatLocaleString(label,MagickPathExtent,"charcoal %gx%g",
+          radius,sigma);
         break;
       }
       case JPEGPreview:
@@ -2685,8 +2686,9 @@ MagickExport Image *PreviewImage(const Image *image,const PreviewType preview,
               "quality %s\n%gkb ",factor,(double) ((MagickOffsetType)
               GetBlobSize(preview_image))/1024.0);
           else
-            (void) FormatLocaleString(label,MagickPathExtent,"quality %s\n%.20gb ",
-              factor,(double) ((MagickOffsetType) GetBlobSize(thumbnail)));
+            (void) FormatLocaleString(label,MagickPathExtent,
+              "quality %s\n%.20gb ",factor,(double) ((MagickOffsetType)
+              GetBlobSize(thumbnail)));
         break;
       }
     }
@@ -2713,7 +2715,8 @@ MagickExport Image *PreviewImage(const Image *image,const PreviewType preview,
     Create the montage.
   */
   montage_info=CloneMontageInfo(preview_info,(MontageInfo *) NULL);
-  (void) CopyMagickString(montage_info->filename,image->filename,MagickPathExtent);
+  (void) CopyMagickString(montage_info->filename,image->filename,
+    MagickPathExtent);
   montage_info->shadow=MagickTrue;
   (void) CloneString(&montage_info->tile,"3x3");
   (void) CloneString(&montage_info->geometry,DefaultPreviewGeometry);
@@ -2935,7 +2938,7 @@ MagickExport Image *RotationalBlurImage(const Image *image,const double angle,
             (blur_traits == UndefinedPixelTrait))
           continue;
         if (((blur_traits & CopyPixelTrait) != 0) ||
-            (GetPixelWriteMask(image,p) == 0))
+            (GetPixelWriteMask(image,p) <= (QuantumRange/2)))
           {
             SetPixelChannel(blur_image,channel,p[i],q);
             continue;
@@ -3249,7 +3252,7 @@ MagickExport Image *SelectiveBlurImage(const Image *image,const double radius,
             (blur_traits == UndefinedPixelTrait))
           continue;
         if (((blur_traits & CopyPixelTrait) != 0) ||
-            (GetPixelWriteMask(image,p+center) == 0))
+            (GetPixelWriteMask(image,p+center) <= (QuantumRange/2)))
           {
             SetPixelChannel(blur_image,channel,p[center+i],q);
             continue;
@@ -3541,7 +3544,7 @@ MagickExport Image *ShadeImage(const Image *image,const MagickBooleanType gray,
             (shade_traits == UndefinedPixelTrait))
           continue;
         if (((shade_traits & CopyPixelTrait) != 0) ||
-            (GetPixelWriteMask(linear_image,center) == 0))
+            (GetPixelWriteMask(linear_image,center) <= (QuantumRange/2)))
           {
             SetPixelChannel(shade_image,channel,center[i],q);
             continue;
@@ -3982,7 +3985,7 @@ MagickExport Image *UnsharpMaskImage(const Image *image,const double radius,
             (unsharp_traits == UndefinedPixelTrait))
           continue;
         if (((unsharp_traits & CopyPixelTrait) != 0) ||
-            (GetPixelWriteMask(image,p) == 0))
+            (GetPixelWriteMask(image,p) <= (QuantumRange/2)))
           {
             SetPixelChannel(unsharp_image,channel,p[i],q);
             continue;

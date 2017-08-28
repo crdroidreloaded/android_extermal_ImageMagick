@@ -2054,6 +2054,14 @@ void Magick::Image::autoOrient(void)
   ThrowImageException;
 }
 
+void Magick::Image::autoThreshold(const AutoThresholdMethod method_)
+{
+  modifyImage();
+  GetPPException;
+  AutoThresholdImage(image(),method_, exceptionInfo);
+  ThrowImageException;
+}
+
 void Magick::Image::blackThreshold(const std::string &threshold_)
 {
   modifyImage();
@@ -3523,6 +3531,19 @@ void Magick::Image::map(const Image &mapImage_,const bool dither_)
   options()->quantizeDither(dither_);
   RemapImage(options()->quantizeInfo(),image(),mapImage_.constImage(),
     exceptionInfo);
+  ThrowImageException;
+}
+
+void Magick::Image::meanShift(const size_t width_,const size_t height_,
+  const double color_distance_)
+{
+  MagickCore::Image
+    *newImage;
+
+  GetPPException;
+  newImage=MeanShiftImage(constImage(),width_,height_,color_distance_,
+    exceptionInfo);
+  replaceImage(newImage);
   ThrowImageException;
 }
 

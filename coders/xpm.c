@@ -690,7 +690,13 @@ static MagickBooleanType WritePICONImage(const ImageInfo *image_info,
   (void) RelinquishUniqueFileResource(blob_info->filename);
   blob_info=DestroyImageInfo(blob_info);
   if ((picon == (Image *) NULL) || (affinity_image == (Image *) NULL))
-    return(MagickFalse);
+    {
+      if (affinity_image != (Image *) NULL)
+        affinity_image=DestroyImage(affinity_image);
+      if (picon != (Image *) NULL)
+        picon=DestroyImage(picon);
+      return(MagickFalse);
+    }
   quantize_info=AcquireQuantizeInfo(image_info);
   status=RemapImage(quantize_info,picon,affinity_image,exception);
   quantize_info=DestroyQuantizeInfo(quantize_info);
@@ -826,7 +832,7 @@ static MagickBooleanType WritePICONImage(const ImageInfo *image_info,
       symbol[j]='\0';
       (void) CopyMagickString(buffer,symbol,MagickPathExtent);
       (void) WriteBlobString(image,buffer);
-      p+=GetPixelChannels(image);
+      p+=GetPixelChannels(picon);
     }
     (void) FormatLocaleString(buffer,MagickPathExtent,"\"%s\n",
       y == (ssize_t) (picon->rows-1) ? "" : ",");

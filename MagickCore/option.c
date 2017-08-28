@@ -1164,6 +1164,7 @@ static const OptionInfo
     { "Sinc", SincFilter, UndefinedOptionFlag, MagickFalse },
     { "SincFast", SincFastFilter, UndefinedOptionFlag, MagickFalse },
     { "Spline", SplineFilter, UndefinedOptionFlag, MagickFalse },
+    { "CubicSpline", CubicSplineFilter, UndefinedOptionFlag, MagickFalse },
     { "Triangle", TriangleFilter, UndefinedOptionFlag, MagickFalse },
     { "Welch", WelchFilter, UndefinedOptionFlag, MagickFalse },
     { "Welsh", WelchFilter, UndefinedOptionFlag, MagickTrue }, /*misspell*/
@@ -1433,6 +1434,7 @@ static const OptionInfo
   {
     { "Undefined", UndefinedErrorMetric, UndefinedOptionFlag, MagickTrue },
     { "AE", AbsoluteErrorMetric, UndefinedOptionFlag, MagickFalse },
+    { "DSSIM", StructuralDissimilarityErrorMetric, UndefinedOptionFlag, MagickFalse },
     { "Fuzz", FuzzErrorMetric, UndefinedOptionFlag, MagickFalse },
     { "MAE", MeanAbsoluteErrorMetric, UndefinedOptionFlag, MagickFalse },
     { "MEPP", MeanErrorPerPixelErrorMetric, UndefinedOptionFlag, MagickFalse },
@@ -1442,6 +1444,7 @@ static const OptionInfo
     { "PHASH", PerceptualHashErrorMetric, UndefinedOptionFlag, MagickFalse },
     { "PSNR", PeakSignalToNoiseRatioErrorMetric, UndefinedOptionFlag, MagickFalse },
     { "RMSE", RootMeanSquaredErrorMetric, UndefinedOptionFlag, MagickFalse },
+    { "SSIM", StructuralSimilarityErrorMetric, UndefinedOptionFlag, MagickFalse },
     { (char *) NULL, UndefinedErrorMetric, UndefinedOptionFlag, MagickFalse }
   },
   MethodOptions[] =

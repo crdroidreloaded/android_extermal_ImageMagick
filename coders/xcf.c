@@ -368,8 +368,11 @@ static MagickBooleanType load_tile(Image *image,Image *tile_image,
   graydata=(unsigned char *) xcfdata;  /* used by gray and indexed */
   count=ReadBlob(image,data_length,(unsigned char *) xcfdata);
   if (count != (ssize_t) data_length)
-    ThrowBinaryException(CorruptImageError,"NotEnoughPixelData",
-      image->filename);
+    {
+      xcfodata=(XCFPixelInfo *) RelinquishMagickMemory(xcfodata);
+      ThrowBinaryException(CorruptImageError,"NotEnoughPixelData",
+        image->filename);
+    }
   for (y=0; y < (ssize_t) tile_image->rows; y++)
   {
     q=GetAuthenticPixels(tile_image,0,y,tile_image->columns,1,exception);
@@ -645,6 +648,9 @@ static MagickBooleanType load_level(Image *image,XCFDocInfo *inDocInfo,
     if (offset2 == 0)
       offset2=(MagickOffsetType) (offset + TILE_WIDTH * TILE_WIDTH * 4* 1.5);
     /* seek to the tile offset */
+    if (offset2 > GetBlobSize(image))
+      ThrowBinaryException(CorruptImageError,"InsufficientImageDataInFile",
+        image->filename);
     if (SeekBlob(image, offset, SEEK_SET) != offset)
       ThrowBinaryException(CorruptImageError,"InsufficientImageDataInFile",
         image->filename);
@@ -778,6 +784,9 @@ static MagickBooleanType ReadOneLayer(const ImageInfo *image_info,Image* image,
   XCFDocInfo* inDocInfo,XCFLayerInfo *outLayer,const ssize_t layer,
   ExceptionInfo *exception)
 {
+  MagickBooleanType
+    status;
+
   MagickOffsetType
     offset;
 
@@ -911,6 +920,13 @@ static MagickBooleanType ReadOneLayer(const ImageInfo *image_info,Image* image,
     exception);
   if (outLayer->image == (Image *) NULL)
     return(MagickFalse);
+  status=SetImageExtent(outLayer->image,outLayer->image->columns,
+    outLayer->image->rows,exception);
+  if (status == MagickFalse)
+    {
+      outLayer->image=DestroyImageList(outLayer->image);
+      return(MagickFalse);
+    }
   /* clear the image based on the layer opacity */
   outLayer->image->background_color.alpha=
     ScaleCharToQuantum((unsigned char) outLayer->alpha);
@@ -1332,10 +1348,11 @@ static Image *ReadXCFImage(const ImageInfo *image_info,ExceptionInfo *exception)
         &layer_info[current_layer],current_layer,exception);
       if (layer_ok == MagickFalse)
         {
-          int j;
+          ssize_t j;
 
-          for (j=0; j < current_layer; j++)
-            layer_info[j].image=DestroyImage(layer_info[j].image);
+          for (j=0; j <= current_layer; j++)
+            if (layer_info[j].image != (Image *) NULL)
+              layer_info[j].image=DestroyImage(layer_info[j].image);
           layer_info=(XCFLayerInfo *) RelinquishMagickMemory(layer_info);
           ThrowReaderException(ResourceLimitError,"MemoryAllocationFailed");
         }

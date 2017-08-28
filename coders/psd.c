@@ -331,7 +331,7 @@ static MagickBooleanType CorrectPSDAlphaBlend(const ImageInfo *image_info,
         {
           for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
           {
-            PixelChannel channel=GetPixelChannelChannel(image,i);
+            PixelChannel channel = GetPixelChannelChannel(image,i);
             if (channel != AlphaPixelChannel)
               q[i]=ClampToQuantum((q[i]-((1.0-gamma)*QuantumRange))/gamma);
           }
@@ -1741,6 +1741,12 @@ static MagickBooleanType ReadPSDLayersInternal(Image *image,
                 unsigned char
                   *info;
 
+                if (length > GetBlobSize(image))
+                  {
+                    layer_info=DestroyLayerInfo(layer_info,number_layers);
+                    ThrowBinaryException(CorruptImageError,
+                      "InsufficientImageDataInFile",image->filename);
+                  }
                 layer_info[i].info=AcquireStringInfo((const size_t) length);
                 info=GetStringInfoDatum(layer_info[i].info);
                 (void) ReadBlob(image,(const size_t) length,info);
@@ -2110,6 +2116,8 @@ static Image *ReadPSDImage(const ImageInfo *image_info,ExceptionInfo *exception)
         (void) LogMagickEvent(CoderEvent,GetMagickModule(),
           "  reading image resource blocks - %.20g bytes",(double)
           ((MagickOffsetType) length));
+      if (length > GetBlobSize(image))
+        ThrowReaderException(CorruptImageError,"InsufficientImageDataInFile");
       blocks=(unsigned char *) AcquireQuantumMemory((size_t) length,
         sizeof(*blocks));
       if (blocks == (unsigned char *) NULL)

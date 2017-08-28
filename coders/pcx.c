@@ -1007,7 +1007,12 @@ static MagickBooleanType WritePCXImage(const ImageInfo *image_info,Image *image,
     length=(size_t) pcx_info.bytes_per_line;
     pixel_info=AcquireVirtualMemory(length,pcx_info.planes*sizeof(*pixels));
     if (pixel_info == (MemoryInfo *) NULL)
-      ThrowWriterException(ResourceLimitError,"MemoryAllocationFailed");
+      {
+        pcx_colormap=(unsigned char *) RelinquishMagickMemory(pcx_colormap);
+        if (page_table != (MagickOffsetType *) NULL)
+          page_table=(MagickOffsetType *) RelinquishMagickMemory(page_table);
+        ThrowWriterException(ResourceLimitError,"MemoryAllocationFailed");
+      }
     pixels=(unsigned char *) GetVirtualMemoryBlob(pixel_info);
     q=pixels;
     if ((image->storage_class == DirectClass) || (image->colors > 256))
@@ -1093,8 +1098,8 @@ static MagickBooleanType WritePCXImage(const ImageInfo *image_info,Image *image,
               break;
             if (image->previous == (Image *) NULL)
               {
-                status=SetImageProgress(image,SaveImageTag,(MagickOffsetType) y,
-                image->rows);
+                status=SetImageProgress(image,SaveImageTag,(MagickOffsetType)
+                  y,image->rows);
                 if (status == MagickFalse)
                   break;
               }
@@ -1168,7 +1173,10 @@ static MagickBooleanType WritePCXImage(const ImageInfo *image_info,Image *image,
       page_table[scene+1]=0;
       offset=SeekBlob(image,0L,SEEK_SET);
       if (offset < 0)
-        ThrowWriterException(CorruptImageError,"ImproperImageHeader");
+        {
+          page_table=(MagickOffsetType *) RelinquishMagickMemory(page_table);
+          ThrowWriterException(CorruptImageError,"ImproperImageHeader");
+        }
       (void) WriteBlobLSBLong(image,0x3ADE68B1L);
       for (i=0; i <= (ssize_t) scene; i++)
         (void) WriteBlobLSBLong(image,(unsigned int) page_table[i]);

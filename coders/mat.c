@@ -690,7 +690,9 @@ static Image *ReadMATImageV4(const ImageInfo *image_info,Image *image,
     if (image_info->ping != MagickFalse)
       {
         Swap(image->columns,image->rows);
-        return(image);
+        if(HDR.imagf==1) ldblk *= 2;
+        SeekBlob(image, HDR.nCols*ldblk, SEEK_CUR);
+        goto skip_reading_current;
       }
     status=SetImageExtent(image,image->columns,image->rows,exception);
     if (status == MagickFalse)
@@ -796,6 +798,7 @@ static Image *ReadMATImageV4(const ImageInfo *image_info,Image *image,
     /*
       Allocate next image structure.
     */
+skip_reading_current:
     AcquireNextImage(image_info,image,exception);
     if (GetNextImageInList(image) == (Image *) NULL)
       {
@@ -933,7 +936,10 @@ static Image *ReadMATImage(const ImageInfo *image_info,ExceptionInfo *exception)
   if (strncmp(MATLAB_HDR.identific, "MATLAB", 6))
     {
 MATLAB_KO:
-      clone_info=DestroyImageInfo(clone_info);
+      if ((image != image2) && (image2 != (Image *) NULL))
+        image2=DestroyImage(image2);
+      if (clone_info != (ImageInfo *) NULL)
+        clone_info=DestroyImageInfo(clone_info);
       ThrowReaderException(CorruptImageError,"ImproperImageHeader");
     }
 
@@ -963,7 +969,11 @@ MATLAB_KO:
     }
 #endif
 
-    if(MATLAB_HDR.DataType!=miMATRIX) continue;  /* skip another objects. */
+    if (MATLAB_HDR.DataType!=miMATRIX)
+      {
+        clone_info=DestroyImageInfo(clone_info);
+        continue;  /* skip another objects. */
+      }
 
     MATLAB_HDR.unknown1 = ReadBlobXXXLong(image2);
     MATLAB_HDR.unknown2 = ReadBlobXXXLong(image2);
@@ -995,7 +1005,12 @@ MATLAB_KO:
          if (Frames == 0)
            ThrowReaderException(CorruptImageError,"ImproperImageHeader");
          break;
-      default: ThrowReaderException(CoderError, "MultidimensionalMatricesAreNotSupported");
+      default:
+        if (clone_info != (ImageInfo *) NULL)
+          clone_info=DestroyImageInfo(clone_info);
+        if ((image != image2) && (image2 != (Image *) NULL))
+          image2=DestroyImage(image2);
+        ThrowReaderException(CoderError, "MultidimensionalMatricesAreNotSupported");
     }
 
     MATLAB_HDR.Flag1 = ReadBlobXXXShort(image2);
@@ -1093,6 +1108,10 @@ RestoreMSCWarning
         ldblk = (ssize_t) (8 * MATLAB_HDR.SizeX);
         break;
       default:
+        if ((image != image2) && (image2 != (Image *) NULL))
+          image2=DestroyImage(image2);
+        if (clone_info)
+          clone_info=DestroyImageInfo(clone_info);
         ThrowReaderException(CoderError, "UnsupportedCellTypeInTheMatrix");
     }
     (void) sample_size;
@@ -1126,7 +1145,11 @@ RestoreMSCWarning
     }
     status=SetImageExtent(image,image->columns,image->rows,exception);
     if (status == MagickFalse)
-      return(DestroyImageList(image));
+      {
+        if ((image != image2) && (image2 != (Image *) NULL))
+          image2=DestroyImage(image2);
+        return(DestroyImageList(image));
+      }
     quantum_info=AcquireQuantumInfo(clone_info,image);
     if (quantum_info == (QuantumInfo *) NULL)
       ThrowReaderException(ResourceLimitError,"MemoryAllocationFailed");
@@ -1299,14 +1322,17 @@ done_reading:
           }
         }
         }
+
+    if (quantum_info != (QuantumInfo *) NULL)
+      quantum_info=DestroyQuantumInfo(quantum_info);
+    if (clone_info)
+      clone_info=DestroyImageInfo(clone_info);
   }
 
   RelinquishMagickMemory(BImgBuff);
   if (quantum_info != (QuantumInfo *) NULL)
     quantum_info=DestroyQuantumInfo(quantum_info);
 END_OF_READING:
-  if (clone_info)
-    clone_info=DestroyImageInfo(clone_info);
   CloseBlob(image);
 
 
@@ -1324,6 +1350,8 @@ END_OF_READING:
         Image *tmp=p;
         if ((p->rows == 0) || (p->columns == 0)) {
           p=p->previous;
+          if (tmp == image2)
+            image2=(Image *) NULL;
           DeleteImageFromList(&tmp);
         } else {
           image=p;
@@ -1350,8 +1378,11 @@ END_OF_READING:
     clone_info = NULL;
   }
   if (logging) (void)LogMagickEvent(CoderEvent,GetMagickModule(),"return");
-  if(image==NULL)
-    ThrowReaderException(CorruptImageError,"ImproperImageHeader");
+  if (image==NULL)
+    ThrowReaderException(CorruptImageError,"ImproperImageHeader")
+  else
+    if ((image != image2) && (image2 != (Image *) NULL))
+      image2=DestroyImage(image2);
   return (image);
 }
 

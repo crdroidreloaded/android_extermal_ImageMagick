@@ -110,8 +110,8 @@
 %
 %    Sr, Sg, Sb: Sums of the red, green, and blue component values for all
 %    pixels not classified at a lower depth. The combination of these sums
-%    and n2 will ultimately characterize the mean color of a set of
-%    pixels represented by this node.
+%    and n2 will ultimately characterize the mean color of a set of pixels
+%    represented by this node.
 %
 %    E: the distance squared in RGB space between each pixel contained
 %    within a node and the nodes' center.  This represents the
@@ -1195,7 +1195,7 @@ MagickExport MagickBooleanType CompressImageColormap(Image *image,
   assert(image->signature == MagickCoreSignature);
   if (image->debug != MagickFalse)
     (void) LogMagickEvent(TraceEvent,GetMagickModule(),"%s",image->filename);
-  if (image->storage_class != PseudoClass)
+  if (IsPaletteImage(image) == MagickFalse)
     return(MagickFalse);
   GetQuantizeInfo(&quantize_info);
   quantize_info.number_colors=image->colors;
@@ -3329,8 +3329,11 @@ static MagickBooleanType SetGrayscaleImage(Image *image,
       (void) ResetMagickMemory(colormap_index,(-1),MaxColormapSize*
         sizeof(*colormap_index));
       if (AcquireImageColormap(image,MaxColormapSize,exception) == MagickFalse)
-        ThrowBinaryException(ResourceLimitError,"MemoryAllocationFailed",
-          image->filename);
+        {
+          colormap_index=(ssize_t *) RelinquishMagickMemory(colormap_index);
+          ThrowBinaryException(ResourceLimitError,"MemoryAllocationFailed",
+            image->filename);
+        }
       image->colors=0;
       status=MagickTrue;
       image_view=AcquireAuthenticCacheView(image,exception);
@@ -3392,8 +3395,11 @@ static MagickBooleanType SetGrayscaleImage(Image *image,
     IntensityCompare);
   colormap=(PixelInfo *) AcquireQuantumMemory(image->colors,sizeof(*colormap));
   if (colormap == (PixelInfo *) NULL)
-    ThrowBinaryException(ResourceLimitError,"MemoryAllocationFailed",
-      image->filename);
+    {
+      colormap_index=(ssize_t *) RelinquishMagickMemory(colormap_index);
+      ThrowBinaryException(ResourceLimitError,"MemoryAllocationFailed",
+        image->filename);
+    }
   j=0;
   colormap[j]=image->colormap[0];
   for (i=0; i < (ssize_t) image->colors; i++)

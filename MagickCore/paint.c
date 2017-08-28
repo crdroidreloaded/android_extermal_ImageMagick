@@ -547,43 +547,46 @@ MagickExport MagickBooleanType GradientImage(Image *image,
       */
       sine=sin((double) DegreesToRadians(gradient->angle-90.0));
       cosine=cos((double) DegreesToRadians(gradient->angle-90.0));
-      distance=fabs((double) image->columns*cosine)+
-        fabs((double) image->rows*sine);
-      gradient->gradient_vector.x1=0.5*(image->columns-distance*cosine);
-      gradient->gradient_vector.y1=0.5*(image->rows-distance*sine);
-      gradient->gradient_vector.x2=0.5*(image->columns+distance*cosine);
-      gradient->gradient_vector.y2=0.5*(image->rows+distance*sine);
+      distance=fabs((double) (image->columns-1.0)*cosine)+
+        fabs((double) (image->rows-1.0)*sine);
+      gradient->gradient_vector.x1=0.5*((image->columns-1.0)-distance*cosine);
+      gradient->gradient_vector.y1=0.5*((image->rows-1.0)-distance*sine);
+      gradient->gradient_vector.x2=0.5*((image->columns-1.0)+distance*cosine);
+      gradient->gradient_vector.y2=0.5*((image->rows-1.0)+distance*sine);
     }
-  gradient->radii.x=(double) MagickMax(image->columns,image->rows)/2.0;
+  gradient->radii.x=(double) MagickMax((image->columns-1.0),(image->rows-1.0))/
+    2.0;
   gradient->radii.y=gradient->radii.x;
   artifact=GetImageArtifact(image,"gradient:extent");
   if (artifact != (const char *) NULL)
     {
       if (LocaleCompare(artifact,"Circle") == 0)
         {
-          gradient->radii.x=(double) MagickMax(image->columns,image->rows)/2.0;
+          gradient->radii.x=(double) MagickMax((image->columns-1.0),
+            (image->rows-1.0))/2.0;
           gradient->radii.y=gradient->radii.x;
         }
       if (LocaleCompare(artifact,"Diagonal") == 0)
         {
-          gradient->radii.x=(double) (sqrt(image->columns*image->columns+
-            image->rows*image->rows))/2.0;
+          gradient->radii.x=(double) (sqrt((image->columns-1.0)*
+            (image->columns-1.0)+(image->rows-1.0)*(image->rows-1.0)))/2.0;
           gradient->radii.y=gradient->radii.x;
         }
       if (LocaleCompare(artifact,"Ellipse") == 0)
         {
-          gradient->radii.x=(double) image->columns/2.0;
-          gradient->radii.y=(double) image->rows/2.0;
+          gradient->radii.x=(double) (image->columns-1.0)/2.0;
+          gradient->radii.y=(double) (image->rows-1.0)/2.0;
         }
       if (LocaleCompare(artifact,"Maximum") == 0)
         {
-          gradient->radii.x=(double) MagickMax(image->columns,image->rows)/2.0;
+          gradient->radii.x=(double) MagickMax((image->columns-1.0),
+            (image->rows-1.0))/2.0;
           gradient->radii.y=gradient->radii.x;
         }
       if (LocaleCompare(artifact,"Minimum") == 0)
         {
-          gradient->radii.x=(double) (MagickMin(image->columns,image->rows))/
-            2.0;
+          gradient->radii.x=(double) (MagickMin((image->columns-1.0),
+            (image->rows-1.0)))/2.0;
           gradient->radii.y=gradient->radii.x;
         }
     }
@@ -819,14 +822,14 @@ MagickExport Image *OilPaintImage(const Image *image,const double radius,
       }
       for (i=0; i < (ssize_t) GetPixelChannels(linear_image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(linear_image,i);
-        PixelTrait traits=GetPixelChannelTraits(linear_image,channel);
+        PixelChannel channel = GetPixelChannelChannel(linear_image,i);
+        PixelTrait traits = GetPixelChannelTraits(linear_image,channel);
         PixelTrait paint_traits=GetPixelChannelTraits(paint_image,channel);
         if ((traits == UndefinedPixelTrait) ||
             (paint_traits == UndefinedPixelTrait))
           continue;
         if (((paint_traits & CopyPixelTrait) != 0) ||
-            (GetPixelWriteMask(linear_image,p) == 0))
+            (GetPixelWriteMask(linear_image,p) <= (QuantumRange/2)))
           {
             SetPixelChannel(paint_image,channel,p[center+i],q);
             continue;
@@ -967,7 +970,7 @@ MagickExport MagickBooleanType OpaquePaintImage(Image *image,
     pixel=zero;
     for (x=0; x < (ssize_t) image->columns; x++)
     {
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
@@ -1118,7 +1121,7 @@ MagickExport MagickBooleanType TransparentPaintImage(Image *image,
     pixel=zero;
     for (x=0; x < (ssize_t) image->columns; x++)
     {
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
@@ -1253,7 +1256,7 @@ MagickExport MagickBooleanType TransparentPaintImageChroma(Image *image,
     GetPixelInfo(image,&pixel);
     for (x=0; x < (ssize_t) image->columns; x++)
     {
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;

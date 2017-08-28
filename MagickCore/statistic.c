@@ -545,9 +545,9 @@ MagickExport Image *EvaluateImages(const Image *images,
               }
             for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
             {
-              PixelChannel channel=GetPixelChannelChannel(image,i);
+              PixelChannel channel = GetPixelChannelChannel(image,i);
               PixelTrait evaluate_traits=GetPixelChannelTraits(image,channel);
-              PixelTrait traits=GetPixelChannelTraits(next,channel);
+              PixelTrait traits = GetPixelChannelTraits(next,channel);
               if ((traits == UndefinedPixelTrait) ||
                   (evaluate_traits == UndefinedPixelTrait))
                 continue;
@@ -646,15 +646,15 @@ MagickExport Image *EvaluateImages(const Image *images,
             register ssize_t
               i;
 
-            if (GetPixelWriteMask(next,p) == 0)
+            if (GetPixelWriteMask(next,p) <= (QuantumRange/2))
               {
                 p+=GetPixelChannels(next);
                 continue;
               }
             for (i=0; i < (ssize_t) GetPixelChannels(next); i++)
             {
-              PixelChannel channel=GetPixelChannelChannel(image,i);
-              PixelTrait traits=GetPixelChannelTraits(next,channel);
+              PixelChannel channel = GetPixelChannelChannel(image,i);
+              PixelTrait traits = GetPixelChannelTraits(next,channel);
               PixelTrait evaluate_traits=GetPixelChannelTraits(image,channel);
               if ((traits == UndefinedPixelTrait) ||
                   (evaluate_traits == UndefinedPixelTrait))
@@ -711,15 +711,15 @@ MagickExport Image *EvaluateImages(const Image *images,
           register ssize_t
             i;
 
-          if (GetPixelWriteMask(image,q) == 0)
+          if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
             {
               q+=GetPixelChannels(image);
               continue;
             }
           for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
           {
-            PixelChannel channel=GetPixelChannelChannel(image,i);
-            PixelTrait traits=GetPixelChannelTraits(image,channel);
+            PixelChannel channel = GetPixelChannelChannel(image,i);
+            PixelTrait traits = GetPixelChannelTraits(image,channel);
             if (traits == UndefinedPixelTrait)
               continue;
             if ((traits & UpdatePixelTrait) == 0)
@@ -822,12 +822,12 @@ MagickExport MagickBooleanType EvaluateImage(Image *image,
 
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if (traits == UndefinedPixelTrait)
           continue;
         if (((traits & CopyPixelTrait) != 0) ||
-            (GetPixelWriteMask(image,q) == 0))
+            (GetPixelWriteMask(image,q) <= (QuantumRange/2)))
           continue;
         if ((traits & UpdatePixelTrait) == 0)
           continue;
@@ -1049,15 +1049,15 @@ MagickExport MagickBooleanType FunctionImage(Image *image,
       register ssize_t
         i;
 
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
         }
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if (traits == UndefinedPixelTrait)
           continue;
         if ((traits & UpdatePixelTrait) == 0)
@@ -1320,8 +1320,8 @@ static size_t GetImageChannels(const Image *image)
   channels=0;
   for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
   {
-    PixelChannel channel=GetPixelChannelChannel(image,i);
-    PixelTrait traits=GetPixelChannelTraits(image,channel);
+    PixelChannel channel = GetPixelChannelChannel(image,i);
+    PixelTrait traits = GetPixelChannelTraits(image,channel);
     if (traits == UndefinedPixelTrait)
       continue;
     channels++;
@@ -1402,15 +1402,15 @@ MagickExport ChannelMoments *GetImageMoments(const Image *image,
       register ssize_t
         i;
 
-      if (GetPixelWriteMask(image,p) == 0)
+      if (GetPixelWriteMask(image,p) <= (QuantumRange/2))
         {
           p+=GetPixelChannels(image);
           continue;
         }
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if (traits == UndefinedPixelTrait)
           continue;
         if ((traits & UpdatePixelTrait) == 0)
@@ -1460,15 +1460,15 @@ MagickExport ChannelMoments *GetImageMoments(const Image *image,
       register ssize_t
         i;
 
-      if (GetPixelWriteMask(image,p) == 0)
+      if (GetPixelWriteMask(image,p) <= (QuantumRange/2))
         {
           p+=GetPixelChannels(image);
           continue;
         }
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if (traits == UndefinedPixelTrait)
           continue;
         if ((traits & UpdatePixelTrait) == 0)
@@ -1831,15 +1831,15 @@ MagickExport MagickBooleanType GetImageRange(const Image *image,double *minima,
       register ssize_t
         i;
 
-      if (GetPixelWriteMask(image,p) == 0)
+      if (GetPixelWriteMask(image,p) <= (QuantumRange/2))
         {
           p+=GetPixelChannels(image);
           continue;
         }
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if (traits == UndefinedPixelTrait)
           continue;
         if ((traits & UpdatePixelTrait) == 0)
@@ -1989,15 +1989,15 @@ MagickExport ChannelStatistics *GetImageStatistics(const Image *image,
       register ssize_t
         i;
 
-      if (GetPixelWriteMask(image,p) == 0)
+      if (GetPixelWriteMask(image,p) <= (QuantumRange/2))
         {
           p+=GetPixelChannels(image);
           continue;
         }
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if (traits == UndefinedPixelTrait)
           continue;
         if ((traits & UpdatePixelTrait) == 0)
@@ -2072,7 +2072,7 @@ MagickExport ChannelStatistics *GetImageStatistics(const Image *image,
     /*
       Compute pixel entropy.
     */
-    PixelChannel channel=GetPixelChannelChannel(image,i);
+    PixelChannel channel = GetPixelChannelChannel(image,i);
     number_bins=0.0;
     for (j=0; j <= (ssize_t) MaxMap; j++)
       if (histogram[GetPixelChannels(image)*j+i] > 0.0)
@@ -2272,7 +2272,7 @@ MagickExport Image *PolynomialImage(const Image *images,
         register ssize_t
           i;
 
-        if (GetPixelWriteMask(next,p) == 0)
+        if (GetPixelWriteMask(next,p) <= (QuantumRange/2))
           {
             p+=GetPixelChannels(next);
             continue;
@@ -2283,8 +2283,8 @@ MagickExport Image *PolynomialImage(const Image *images,
             coefficient,
             degree;
 
-          PixelChannel channel=GetPixelChannelChannel(image,i);
-          PixelTrait traits=GetPixelChannelTraits(next,channel);
+          PixelChannel channel = GetPixelChannelChannel(image,i);
+          PixelTrait traits = GetPixelChannelTraits(next,channel);
           PixelTrait polynomial_traits=GetPixelChannelTraits(image,channel);
           if ((traits == UndefinedPixelTrait) ||
               (polynomial_traits == UndefinedPixelTrait))
@@ -2306,15 +2306,15 @@ MagickExport Image *PolynomialImage(const Image *images,
       register ssize_t
         i;
 
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
         }
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if (traits == UndefinedPixelTrait)
           continue;
         if ((traits & UpdatePixelTrait) == 0)
@@ -2941,15 +2941,15 @@ MagickExport Image *StatisticImage(const Image *image,const StatisticType type,
         ssize_t
           v;
 
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         PixelTrait statistic_traits=GetPixelChannelTraits(statistic_image,
           channel);
         if ((traits == UndefinedPixelTrait) ||
             (statistic_traits == UndefinedPixelTrait))
           continue;
         if (((statistic_traits & CopyPixelTrait) != 0) ||
-            (GetPixelWriteMask(image,p) == 0))
+            (GetPixelWriteMask(image,p) <= (QuantumRange/2)))
           {
             SetPixelChannel(statistic_image,channel,p[center+i],q);
             continue;

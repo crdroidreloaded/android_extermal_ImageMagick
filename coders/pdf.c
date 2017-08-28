@@ -157,6 +157,19 @@ static MagickBooleanType InvokePDFDelegate(const MagickBooleanType verbose,
   int
     status;
 
+#define ExecuteGhostscriptCommand(command,status) \
+{ \
+  status=ExternalDelegateCommand(MagickFalse,verbose,command,message, \
+    exception); \
+  if (status == 0) \
+    return(MagickTrue); \
+  if (status < 0) \
+    return(MagickFalse); \
+  (void) ThrowMagickException(exception,GetMagickModule(),DelegateError, \
+    "FailedToExecuteCommand","`%s' (%d)",command,status); \
+  return(MagickFalse); \
+}
+
 #if defined(MAGICKCORE_GS_DELEGATE) || defined(MAGICKCORE_WINDOWS_SUPPORT)
 #define SetArgsStart(command,args_start) \
   if (args_start == (const char *) NULL) \
@@ -170,19 +183,6 @@ static MagickBooleanType InvokePDFDelegate(const MagickBooleanType verbose,
             args_start++; \
         } \
     }
-
-#define ExecuteGhostscriptCommand(command,status) \
-{ \
-  status=ExternalDelegateCommand(MagickFalse,verbose,command,message, \
-    exception); \
-  if (status == 0) \
-    return(MagickTrue); \
-  if (status < 0) \
-    return(MagickFalse); \
-  (void) ThrowMagickException(exception,GetMagickModule(),DelegateError, \
-    "FailedToExecuteCommand","`%s' (%d)",command,status); \
-  return(MagickFalse); \
-}
 
   char
     **argv,
@@ -286,8 +286,7 @@ static MagickBooleanType InvokePDFDelegate(const MagickBooleanType verbose,
     errors=DestroyString(errors);
   return(MagickTrue);
 #else
-  status=ExternalDelegateCommand(MagickFalse,verbose,command,message,exception);
-  return(status == 0 ? MagickTrue : MagickFalse);
+  ExecuteGhostscriptCommand(command,status);
 #endif
 }
 
@@ -1989,7 +1988,11 @@ RestoreMSCWarning
             length*=image->colorspace == CMYKColorspace ? 4UL : 3UL;
             pixel_info=AcquireVirtualMemory(length,sizeof(*pixels));
             if (pixel_info == (MemoryInfo *) NULL)
-              ThrowWriterException(ResourceLimitError,"MemoryAllocationFailed");
+              {
+                xref=(MagickOffsetType *) RelinquishMagickMemory(xref);
+                ThrowWriterException(ResourceLimitError,
+                  "MemoryAllocationFailed");
+              }
             pixels=(unsigned char *) GetVirtualMemoryBlob(pixel_info);
             /*
               Dump runoffset encoded pixels.
@@ -2086,8 +2089,11 @@ RestoreMSCWarning
               length=(size_t) number_pixels;
               pixel_info=AcquireVirtualMemory(length,sizeof(*pixels));
               if (pixel_info == (MemoryInfo *) NULL)
-                ThrowWriterException(ResourceLimitError,
-                  "MemoryAllocationFailed");
+                {
+                  xref=(MagickOffsetType *) RelinquishMagickMemory(xref);
+                  ThrowWriterException(ResourceLimitError,
+                    "MemoryAllocationFailed");
+                }
               pixels=(unsigned char *) GetVirtualMemoryBlob(pixel_info);
               /*
                 Dump Runlength encoded pixels.
@@ -2452,7 +2458,7 @@ RestoreMSCWarning
                 break;
               for (x=0; x < (ssize_t) tile_image->columns; x++)
               {
-                Ascii85Encode(tile_image,ScaleQuantumToChar(ClampToQuantum(
+                Ascii85Encode(image,ScaleQuantumToChar(ClampToQuantum(
                   GetPixelLuma(tile_image,p))));
                 p+=GetPixelChannels(tile_image);
               }

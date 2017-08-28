@@ -187,8 +187,7 @@ static CubeInfo *ClassifyImageColors(const Image *image,
     proceed;
 
   PixelInfo
-    pixel,
-    target;
+    pixel;
 
   NodeInfo
     *node_info;
@@ -223,7 +222,6 @@ static CubeInfo *ClassifyImageColors(const Image *image,
       return(cube_info);
     }
   GetPixelInfo(image,&pixel);
-  GetPixelInfo(image,&target);
   image_view=AcquireVirtualCacheView(image,exception);
   for (y=0; y < (ssize_t) image->rows; y++)
   {
@@ -256,11 +254,8 @@ static CubeInfo *ClassifyImageColors(const Image *image,
         index--;
       }
       for (i=0; i < (ssize_t) node_info->number_unique; i++)
-      {
-        target=node_info->list[i];
-        if (IsPixelInfoEquivalent(&pixel,&target) != MagickFalse)
+        if (IsPixelInfoEquivalent(&pixel,node_info->list+i) != MagickFalse)
           break;
-      }
       if (i < (ssize_t) node_info->number_unique)
         node_info->list[i].count++;
       else
@@ -926,8 +921,8 @@ MagickExport MagickBooleanType MinMaxStretchImage(Image *image,
     ChannelType
       channel_mask;
 
-    PixelChannel channel=GetPixelChannelChannel(image,i);
-    PixelTrait traits=GetPixelChannelTraits(image,channel);
+    PixelChannel channel = GetPixelChannelChannel(image,i);
+    PixelTrait traits = GetPixelChannelTraits(image,channel);
     if ((traits & UpdatePixelTrait) == 0)
       continue;
     channel_mask=SetImageChannelMask(image,(ChannelType) (1 << i));

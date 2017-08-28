@@ -679,15 +679,15 @@ MagickExport MagickBooleanType RaiseImage(Image *image,
       }
     for (x=0; x < y; x++)
     {
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
         }
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
         q[i]=ClampToQuantum(QuantumScale*((double) q[i]*HighlightFactor+(double)
@@ -697,15 +697,15 @@ MagickExport MagickBooleanType RaiseImage(Image *image,
     }
     for ( ; x < (ssize_t) (image->columns-y); x++)
     {
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
         }
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
         q[i]=ClampToQuantum(QuantumScale*((double) q[i]*AccentuateFactor+
@@ -715,15 +715,15 @@ MagickExport MagickBooleanType RaiseImage(Image *image,
     }
     for ( ; x < (ssize_t) image->columns; x++)
     {
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
         }
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
         q[i]=ClampToQuantum(QuantumScale*((double) q[i]*ShadowFactor+(double)
@@ -769,15 +769,15 @@ MagickExport MagickBooleanType RaiseImage(Image *image,
       }
     for (x=0; x < (ssize_t) raise_info->width; x++)
     {
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
         }
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
         q[i]=ClampToQuantum(QuantumScale*((double) q[i]*HighlightFactor+(double)
@@ -789,15 +789,15 @@ MagickExport MagickBooleanType RaiseImage(Image *image,
       q+=GetPixelChannels(image);
     for ( ; x < (ssize_t) image->columns; x++)
     {
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
         }
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
         q[i]=ClampToQuantum(QuantumScale*((double) q[i]*ShadowFactor+(double)
@@ -843,15 +843,15 @@ MagickExport MagickBooleanType RaiseImage(Image *image,
       }
     for (x=0; x < (ssize_t) (image->rows-y); x++)
     {
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
         }
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
         q[i]=ClampToQuantum(QuantumScale*((double) q[i]*HighlightFactor+(double)
@@ -863,8 +863,8 @@ MagickExport MagickBooleanType RaiseImage(Image *image,
     {
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
         q[i]=ClampToQuantum(QuantumScale*((double) q[i]*TroughFactor+
@@ -874,15 +874,15 @@ MagickExport MagickBooleanType RaiseImage(Image *image,
     }
     for ( ; x < (ssize_t) image->columns; x++)
     {
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
         }
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
         q[i]=ClampToQuantum(QuantumScale*((double) q[i]*ShadowFactor+(double)

@@ -541,9 +541,9 @@ static MagickBooleanType EncodeImage(const ImageInfo *image_info,Image *image,
     Emit a code. \
   */ \
   if (bits > 0) \
-    datum|=(code) << bits; \
+    datum|=(size_t) (code) << bits; \
   else \
-    datum=code; \
+    datum=(size_t) (code); \
   bits+=number_bits; \
   while (bits >= 8) \
   { \
@@ -702,7 +702,7 @@ static MagickBooleanType EncodeImage(const ImageInfo *image_info,Image *image,
           if (next_pixel != MagickFalse)
             continue;
         }
-      GIFOutputCode((size_t) waiting_code);
+      GIFOutputCode(waiting_code);
       if (free_code < MaxGIFTable)
         {
           hash_code[k]=(short) free_code++;
@@ -772,7 +772,7 @@ static MagickBooleanType EncodeImage(const ImageInfo *image_info,Image *image,
   /*
     Flush out the buffered code.
   */
-  GIFOutputCode((size_t) waiting_code);
+  GIFOutputCode(waiting_code);
   GIFOutputCode(end_of_information_code);
   if (bits > 0)
     {
@@ -1018,6 +1018,8 @@ static Image *ReadGIFImage(const ImageInfo *image_info,ExceptionInfo *exception)
     MagickMax(global_colors,256),3UL*sizeof(*global_colormap));
   if (global_colormap == (unsigned char *) NULL)
     ThrowReaderException(ResourceLimitError,"MemoryAllocationFailed");
+  (void) ResetMagickMemory(global_colormap,0,3*MagickMax(global_colors,256)*
+    sizeof(*global_colormap));
   if (BitSet((int) flag,0x80) != 0)
     {
       count=ReadBlob(image,(size_t) (3*global_colors),global_colormap);
@@ -1064,8 +1066,8 @@ static Image *ReadGIFImage(const ImageInfo *image_info,ExceptionInfo *exception)
               Read graphics control extension.
             */
             while (ReadBlobBlock(image,buffer) != 0) ;
-            dispose=(size_t) (buffer[0] >> 2);
-            delay=(size_t) ((buffer[2] << 8) | buffer[1]);
+            dispose=(size_t) buffer[0] >> 2;
+            delay=((size_t) buffer[2] << 8) | buffer[1];
             if ((ssize_t) (buffer[0] & 0x01) == 0x01)
               opacity=(ssize_t) buffer[3];
             break;
@@ -1107,10 +1109,11 @@ static Image *ReadGIFImage(const ImageInfo *image_info,ExceptionInfo *exception)
               loop=LocaleNCompare((char *) buffer,"NETSCAPE2.0",11) == 0 ?
                 MagickTrue : MagickFalse;
             if (loop != MagickFalse)
+              while (ReadBlobBlock(image,buffer) != 0)
               {
-                while (ReadBlobBlock(image,buffer) != 0)
-                  iterations=(size_t) ((buffer[2] << 8) | buffer[1]);
-                break;
+                iterations=((size_t) buffer[2] << 8) | buffer[1];
+                if (iterations != 0)
+                  iterations++;
               }
             else
               {
@@ -1737,7 +1740,8 @@ static MagickBooleanType WriteGIFImage(const ImageInfo *image_info,Image *image,
             (void) WriteBlob(image,11,(unsigned char *) "NETSCAPE2.0");
             (void) WriteBlobByte(image,(unsigned char) 0x03);
             (void) WriteBlobByte(image,(unsigned char) 0x01);
-            (void) WriteBlobLSBShort(image,(unsigned short) image->iterations);
+            (void) WriteBlobLSBShort(image,(unsigned short) (image->iterations ?
+              image->iterations-1 : 0));
             (void) WriteBlobByte(image,(unsigned char) 0x00);
           }
         if ((image->gamma != 1.0f/2.2f))

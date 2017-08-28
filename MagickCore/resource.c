@@ -1007,7 +1007,7 @@ MagickExport MagickBooleanType RelinquishUniqueFileResource(const char *path)
     ActivateSemaphoreInfo(&resource_semaphore);
   LockSemaphoreInfo(resource_semaphore);
   if (temporary_resources != (SplayTreeInfo *) NULL)
-    status=DeleteNodeFromSplayTree(temporary_resources, (const void *) path);
+    status=DeleteNodeFromSplayTree(temporary_resources,(const void *) path);
   UnlockSemaphoreInfo(resource_semaphore);
   (void) CopyMagickString(cache_path,path,MagickPathExtent);
   AppendImageFormat("cache",cache_path);

@@ -267,15 +267,15 @@ MagickExport Image *AdaptiveThresholdImage(const Image *image,
       GetPixelChannels(image)*(width/2);
     for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
     {
-      PixelChannel channel=GetPixelChannelChannel(image,i);
-      PixelTrait traits=GetPixelChannelTraits(image,channel);
+      PixelChannel channel = GetPixelChannelChannel(image,i);
+      PixelTrait traits = GetPixelChannelTraits(image,channel);
       PixelTrait threshold_traits=GetPixelChannelTraits(threshold_image,
         channel);
       if ((traits == UndefinedPixelTrait) ||
           (threshold_traits == UndefinedPixelTrait))
         continue;
       if (((threshold_traits & CopyPixelTrait) != 0) ||
-          (GetPixelWriteMask(image,p) == 0))
+          (GetPixelWriteMask(image,p) <= (QuantumRange/2)))
         {
           SetPixelChannel(threshold_image,channel,p[center+i],q);
           continue;
@@ -302,15 +302,15 @@ MagickExport Image *AdaptiveThresholdImage(const Image *image,
         double
           mean;
 
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         PixelTrait threshold_traits=GetPixelChannelTraits(threshold_image,
           channel);
         if ((traits == UndefinedPixelTrait) ||
             (threshold_traits == UndefinedPixelTrait))
           continue;
         if (((threshold_traits & CopyPixelTrait) != 0) ||
-            (GetPixelWriteMask(image,p) == 0))
+            (GetPixelWriteMask(image,p) <= (QuantumRange/2)))
           {
             SetPixelChannel(threshold_image,channel,p[center+i],q);
             continue;
@@ -361,7 +361,7 @@ MagickExport Image *AdaptiveThresholdImage(const Image *image,
 %                                                                             %
 %                                                                             %
 %                                                                             %
-%     A u t o T h r e s o l d I m a g e                                       %
+%     A u t o T h r e s h o l d I m a g e                                     %
 %                                                                             %
 %                                                                             %
 %                                                                             %
@@ -474,7 +474,7 @@ static double KapurThreshold(const Image *image,const double *histogram,
     if ((black_entropy[j]+white_entropy[j]) > maximum_entropy)
       {
         maximum_entropy=black_entropy[j]+white_entropy[j];
-        threshold=(ssize_t) j;
+        threshold=(size_t) j;
       }
   /*
     Free resources.
@@ -532,7 +532,7 @@ static double OTSUThreshold(const Image *image,const double *histogram,
   */
   omega[0]=probability[0];
   myu[0]=0.0;
-  for (i=0; i <= (ssize_t) MaxIntensity; i++)
+  for (i=1; i <= (ssize_t) MaxIntensity; i++)
   {
     omega[i]=omega[i-1]+probability[i];
     myu[i]=myu[i-1]+i*probability[i];
@@ -857,7 +857,7 @@ MagickExport MagickBooleanType BilevelImage(Image *image,const double threshold,
       register ssize_t
         i;
 
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
@@ -865,8 +865,8 @@ MagickExport MagickBooleanType BilevelImage(Image *image,const double threshold,
       pixel=GetPixelIntensity(image,q);
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
         if (image->channel_mask != DefaultChannels)
@@ -1022,7 +1022,7 @@ MagickExport MagickBooleanType BlackThresholdImage(Image *image,
       register ssize_t
         i;
 
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
@@ -1030,8 +1030,8 @@ MagickExport MagickBooleanType BlackThresholdImage(Image *image,
       pixel=GetPixelIntensity(image,q);
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
         if (image->channel_mask != DefaultChannels)
@@ -1158,15 +1158,15 @@ MagickExport MagickBooleanType ClampImage(Image *image,ExceptionInfo *exception)
       register ssize_t
         i;
 
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
         }
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
         q[i]=ClampPixel((MagickRealType) q[i]);
@@ -1799,7 +1799,7 @@ MagickExport MagickBooleanType OrderedDitherImage(Image *image,
         n;
 
       n=0;
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
@@ -1810,8 +1810,8 @@ MagickExport MagickBooleanType OrderedDitherImage(Image *image,
           level,
           threshold;
 
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
         if (fabs(levels[n]) < MagickEpsilon)
@@ -1966,15 +1966,15 @@ MagickExport MagickBooleanType PerceptibleImage(Image *image,
       register ssize_t
         i;
 
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
         }
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if (traits == UndefinedPixelTrait)
           continue;
         q[i]=PerceptibleThreshold(q[i],epsilon);
@@ -2103,7 +2103,7 @@ MagickExport MagickBooleanType RandomThresholdImage(Image *image,
       register ssize_t
         i;
 
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
@@ -2113,8 +2113,8 @@ MagickExport MagickBooleanType RandomThresholdImage(Image *image,
         double
           threshold;
 
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
         if ((double) q[i] < min_threshold)
@@ -2277,7 +2277,7 @@ MagickExport MagickBooleanType WhiteThresholdImage(Image *image,
       register ssize_t
         i;
 
-      if (GetPixelWriteMask(image,q) == 0)
+      if (GetPixelWriteMask(image,q) <= (QuantumRange/2))
         {
           q+=GetPixelChannels(image);
           continue;
@@ -2285,8 +2285,8 @@ MagickExport MagickBooleanType WhiteThresholdImage(Image *image,
       pixel=GetPixelIntensity(image,q);
       for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
       {
-        PixelChannel channel=GetPixelChannelChannel(image,i);
-        PixelTrait traits=GetPixelChannelTraits(image,channel);
+        PixelChannel channel = GetPixelChannelChannel(image,i);
+        PixelTrait traits = GetPixelChannelTraits(image,channel);
         if ((traits & UpdatePixelTrait) == 0)
           continue;
         if (image->channel_mask != DefaultChannels)

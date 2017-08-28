@@ -757,8 +757,9 @@ static MagickBooleanType
   SkipDXTMipmaps(Image *,DDSInfo *,int,ExceptionInfo *),
   SkipRGBMipmaps(Image *,DDSInfo *,int,ExceptionInfo *),
   WriteDDSImage(const ImageInfo *,Image *,ExceptionInfo *),
-  WriteMipmaps(Image *,const size_t,const size_t,const size_t,
-    const MagickBooleanType,const MagickBooleanType,ExceptionInfo *);
+  WriteMipmaps(Image *,const ImageInfo*,const size_t,const size_t,const size_t,
+    const MagickBooleanType,const MagickBooleanType,const MagickBooleanType,
+    ExceptionInfo *);
 
 static void
   RemapIndices(const ssize_t *,const unsigned char *,unsigned char *),
@@ -1783,6 +1784,8 @@ static Image *ReadDDSImage(const ImageInfo *image_info,ExceptionInfo *exception)
     if (n != 0)
       {
         /* Start a new image */
+        if (EOFBlob(image) != MagickFalse)
+          ThrowReaderException(CorruptImageError,"UnexpectedEndOfFile");
         AcquireNextImage(image_info,image,exception);
         if (GetNextImageInList(image) == (Image *) NULL)
           return(DestroyImageList(image));
@@ -1937,6 +1940,8 @@ static MagickBooleanType ReadDXT1(Image *image,DDSInfo *dds_info,
       bits=ReadBlobLSBLong(image);
 
       CalculateColors(c0,c1,&colors,MagickFalse);
+      if (EOFBlob(image) != MagickFalse)
+        break;
 
       /* Write the pixels */
       if (SetDXT1Pixels(image,x,y,colors,bits,q) == MagickFalse)
@@ -1952,6 +1957,8 @@ static MagickBooleanType ReadDXT1(Image *image,DDSInfo *dds_info,
       if (SyncAuthenticPixels(image,exception) == MagickFalse)
         return MagickFalse;
     }
+    if (EOFBlob(image) != MagickFalse)
+      break;
   }
   
   return(SkipDXTMipmaps(image,dds_info,8,exception));
@@ -2009,6 +2016,9 @@ static MagickBooleanType ReadDXT3(Image *image, DDSInfo *dds_info,
       
       CalculateColors(c0, c1, &colors, MagickTrue);
       
+      if (EOFBlob(image) != MagickFalse)
+        break;
+
       /* Write the pixels */
       for (j = 0; j < 4; j++)
       {
@@ -2036,6 +2046,8 @@ static MagickBooleanType ReadDXT3(Image *image, DDSInfo *dds_info,
       if (SyncAuthenticPixels(image,exception) == MagickFalse)
         return MagickFalse;
     }
+    if (EOFBlob(image) != MagickFalse)
+      break;
   }
   
   return(SkipDXTMipmaps(image,dds_info,16,exception));
@@ -2099,6 +2111,8 @@ static MagickBooleanType ReadDXT5(Image *image, DDSInfo *dds_info,
       bits = ReadBlobLSBLong(image);
       
       CalculateColors(c0, c1, &colors, MagickTrue);
+      if (EOFBlob(image) != MagickFalse)
+        break;
       
       /* Write the pixels */
       for (j = 0; j < 4; j++)
@@ -2135,6 +2149,8 @@ static MagickBooleanType ReadDXT5(Image *image, DDSInfo *dds_info,
       if (SyncAuthenticPixels(image,exception) == MagickFalse)
         return MagickFalse;
     }
+    if (EOFBlob(image) != MagickFalse)
+      break;
   }
   
   return(SkipDXTMipmaps(image,dds_info,16,exception));
@@ -2612,6 +2628,7 @@ static MagickBooleanType WriteDDSImage(const ImageInfo *image_info,
 
   MagickBooleanType
     clusterFit,
+    fromlist,
     status,
     weightByAlpha;
 
@@ -2661,12 +2678,31 @@ static MagickBooleanType WriteDDSImage(const ImageInfo *image_info,
         }
     }
 
-  maxMipmaps=SIZE_MAX;
   mipmaps=0;
-  if ((image->columns & (image->columns - 1)) == 0 &&
-      (image->rows & (image->rows - 1)) == 0)
+  fromlist=MagickFalse;
+  option=GetImageOption(image_info,"dds:mipmaps");
+  if (option != (char *) NULL)
     {
-      option=GetImageOption(image_info,"dds:mipmaps");
+      if (LocaleNCompare(option,"fromlist",8) == 0)
+        {
+          Image
+            *next;
+
+          fromlist=MagickTrue;
+          next=image->next;
+          while(next != (Image *) NULL)
+          {
+            mipmaps++;
+            next=next->next;
+          }
+        }
+    }
+
+  if ((mipmaps == 0) &&
+      ((image->columns & (image->columns - 1)) == 0) &&
+      ((image->rows & (image->rows - 1)) == 0))
+    {
+      maxMipmaps=SIZE_MAX;
       if (option != (char *) NULL)
         maxMipmaps=StringToUnsignedLong(option);
 
@@ -2688,8 +2724,8 @@ static MagickBooleanType WriteDDSImage(const ImageInfo *image_info,
   WriteImageData(image,pixelFormat,compression,clusterFit,weightByAlpha,
     exception);
 
-  if (mipmaps > 0 && WriteMipmaps(image,pixelFormat,compression,mipmaps,
-        clusterFit,weightByAlpha,exception) == MagickFalse)
+  if ((mipmaps > 0) && (WriteMipmaps(image,image_info,pixelFormat,compression,
+       mipmaps,fromlist,clusterFit,weightByAlpha,exception) == MagickFalse))
     return(MagickFalse);
 
   (void) CloseBlob(image);
@@ -3000,13 +3036,21 @@ static void WriteIndices(Image *image, const DDSVector3 start,
   }
 }
 
-static MagickBooleanType WriteMipmaps(Image *image, const size_t pixelFormat,
-  const size_t compression, const size_t mipmaps,
-  const MagickBooleanType clusterFit, const MagickBooleanType weightByAlpha,
-  ExceptionInfo *exception)
+static MagickBooleanType WriteMipmaps(Image *image,const ImageInfo *image_info,
+  const size_t pixelFormat,const size_t compression,const size_t mipmaps,
+  const MagickBooleanType fromlist,const MagickBooleanType clusterFit,
+  const MagickBooleanType weightByAlpha,ExceptionInfo *exception)
 {
-  Image*
-    resize_image;
+  const char
+    *option;
+
+  Image
+    *mipmap_image,
+    *resize_image;
+
+  MagickBooleanType
+    fast_mipmaps,
+    status;
 
   register ssize_t
     i;
@@ -3015,30 +3059,61 @@ static MagickBooleanType WriteMipmaps(Image *image, const size_t pixelFormat,
     columns,
     rows;
 
-  columns = image->columns;
-  rows = image->rows;
+  columns=DIV2(image->columns);
+  rows=DIV2(image->rows);
 
-  for (i=0; i< (ssize_t) mipmaps; i++)
+  option=GetImageOption(image_info,"dds:fast-mipmaps");
+  fast_mipmaps=IsStringTrue(option);
+  mipmap_image=image;
+  resize_image=image;
+  status=MagickTrue;
+  for (i=0; i < (ssize_t) mipmaps; i++)
   {
-    resize_image = ResizeImage(image,DIV2(columns),DIV2(rows),TriangleFilter,
-      exception);
+    if (fromlist == MagickFalse)
+      {
+        mipmap_image=ResizeImage(resize_image,columns,rows,TriangleFilter,
+          exception);
 
-    if (resize_image == (Image *) NULL)
-      return(MagickFalse);
+        if (mipmap_image == (Image *) NULL)
+          {
+            status=MagickFalse;
+            break;
+          }
+      }
+    else
+      {
+        mipmap_image=mipmap_image->next;
+        if ((mipmap_image->columns != columns) || (mipmap_image->rows != rows))
+          ThrowBinaryException(CoderError,"ImageColumnOrRowSizeIsNotSupported",
+            image->filename);
+      }
 
-    DestroyBlob(resize_image);
-    resize_image->blob=ReferenceBlob(image->blob);
+    DestroyBlob(mipmap_image);
+    mipmap_image->blob=ReferenceBlob(image->blob);
 
-    WriteImageData(resize_image,pixelFormat,compression,weightByAlpha,
+    WriteImageData(mipmap_image,pixelFormat,compression,weightByAlpha,
       clusterFit,exception);
 
-    resize_image=DestroyImage(resize_image);
+    if (fromlist == MagickFalse)
+      {
+        if (fast_mipmaps == MagickFalse)
+          mipmap_image=DestroyImage(mipmap_image);
+        else
+          {
+            if (resize_image != image)
+              resize_image=DestroyImage(resize_image);
+            resize_image=mipmap_image;
+          }
+      }
 
-    columns = DIV2(columns);
-    rows = DIV2(rows);
+    columns=DIV2(columns);
+    rows=DIV2(rows);
   }
 
-  return(MagickTrue);
+  if (resize_image != image)
+    resize_image=DestroyImage(resize_image);
+
+  return(status);
 }
 
 static void WriteSingleColorFit(Image *image, const DDSVector4 *points,

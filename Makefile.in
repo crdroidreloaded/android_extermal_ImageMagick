@@ -949,7 +949,7 @@ coders_djvu_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$@
 @DJVU_DELEGATE_TRUE@@WITH_MODULES_TRUE@am_coders_djvu_la_rpath =  \
 @DJVU_DELEGATE_TRUE@@WITH_MODULES_TRUE@	-rpath $(codersdir)
-coders_dng_la_DEPENDENCIES = $(MAGICKCORE_LIBS)
+coders_dng_la_DEPENDENCIES = $(MAGICKCORE_LIBS) $(am__DEPENDENCIES_1)
 am_coders_dng_la_OBJECTS = coders/coders_dng_la-dng.lo
 coders_dng_la_OBJECTS = $(am_coders_dng_la_OBJECTS)
 coders_dng_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
@@ -3480,7 +3480,7 @@ coders_djvu_la_LIBADD = $(MAGICKCORE_LIBS) $(DJVU_LIBS) $(JPEG_LIBS) $(LZMA_LIBS
 coders_dng_la_SOURCES = coders/dng.c
 coders_dng_la_CPPFLAGS = $(MAGICK_CODER_CPPFLAGS)
 coders_dng_la_LDFLAGS = $(MODULECOMMONFLAGS)
-coders_dng_la_LIBADD = $(MAGICKCORE_LIBS) $(RAW_LIBS)
+coders_dng_la_LIBADD = $(MAGICKCORE_LIBS) $(RAW_R_LIBS)
 
 # DPS coder module
 coders_dps_la_SOURCES = coders/dps.c
@@ -11784,7 +11784,7 @@ snapshot: distcheck
 	$(MAKE) $(DIST_ARCHIVE_SRPM)
 	$(MAKE) $(DIST_WINDOWS_SRC_ZIP)
 	$(MAKE) $(DIST_WINDOWS_SRC_7ZIP)
-	mv $(DIST_ARCHIVES) $(DIST_WINDOWS_SRC_ZIP) $(DIST_WINDOWS_SRC_7ZIP) $(DIST_ARCHIVE_SRPM) /var/ftp/pub/ImageMagick/alpha/
+	mv $(DIST_ARCHIVES) $(DIST_WINDOWS_SRC_ZIP) $(DIST_WINDOWS_SRC_7ZIP) $(DIST_ARCHIVE_SRPM) /var/ftp/pub/ImageMagick/beta/
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -629,13 +629,18 @@ static Image *ReadPSImage(const ImageInfo *image_info,ExceptionInfo *exception)
         /*
           Read ICC profile.
         */
-        profile=AcquireStringInfo(65536);
+        profile=AcquireStringInfo(MagickPathExtent);
+        datum=GetStringInfoDatum(profile);
         for (i=0; (c=ProfileInteger(image,hex_digits)) != EOF; i++)
         {
-          SetStringInfoLength(profile,(size_t) i+1);
-          datum=GetStringInfoDatum(profile);
+          if (i >= (ssize_t) GetStringInfoLength(profile))
+            {
+              SetStringInfoLength(profile,(size_t) i << 1);
+              datum=GetStringInfoDatum(profile);
+            }
           datum[i]=(unsigned char) c;
         }
+        SetStringInfoLength(profile,(size_t) i+1);
         (void) SetImageProfile(image,"icc",profile,exception);
         profile=DestroyStringInfo(profile);
         continue;
@@ -1153,7 +1158,7 @@ static MagickBooleanType WritePSImage(const ImageInfo *image_info,Image *image,
 {
 #define WriteRunlengthPacket(image,pixel,length,p) \
 { \
-  if ((image->alpha_trait != UndefinedPixelTrait) && \
+  if ((image->alpha_trait != UndefinedPixelTrait) && (length != 0) && \
       (GetPixelAlpha(image,p) == (Quantum) TransparentAlpha)) \
     { \
       q=PopHexPixel(hex_digits,0xff,q); \
@@ -1999,8 +2004,8 @@ RestoreMSCWarning
           /*
             Dump DirectClass image.
           */
-          (void) FormatLocaleString(buffer,MagickPathExtent,"%.20g %.20g\n0\n%d\n",
-            (double) image->columns,(double) image->rows,
+          (void) FormatLocaleString(buffer,MagickPathExtent,
+            "%.20g %.20g\n0\n%d\n",(double) image->columns,(double) image->rows,
             compression == RLECompression ? 1 : 0);
           (void) WriteBlobString(image,buffer);
           switch (compression)

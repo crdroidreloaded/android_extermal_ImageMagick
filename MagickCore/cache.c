@@ -475,6 +475,7 @@ MagickPrivate void ClonePixelCacheMethods(Cache clone,const Cache cache)
 %                                                                             %
 %                                                                             %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
 %  ClonePixelCacheRepository() clones the source pixel cache to the destination
 %  cache.
 %
@@ -901,7 +902,7 @@ static inline void RelinquishPixelCachePixels(CacheInfo *cache_info)
     {
       (void) UnmapBlob(cache_info->pixels,(size_t) cache_info->length);
       cache_info->pixels=(Quantum *) NULL;
-      if (cache_info->mode != ReadMode)
+      if ((cache_info->mode != ReadMode) && (cache_info->mode != PersistMode))
         (void) RelinquishUniqueFileResource(cache_info->cache_filename);
       *cache_info->cache_filename='\0';
       RelinquishMagickResource(MapResource,cache_info->length);
@@ -910,7 +911,7 @@ static inline void RelinquishPixelCachePixels(CacheInfo *cache_info)
     {
       if (cache_info->file != -1)
         (void) ClosePixelCacheOnDisk(cache_info);
-      if (cache_info->mode != ReadMode)
+      if ((cache_info->mode != ReadMode) && (cache_info->mode != PersistMode))
         (void) RelinquishUniqueFileResource(cache_info->cache_filename);
       *cache_info->cache_filename='\0';
       RelinquishMagickResource(DiskResource,cache_info->length);
@@ -1764,7 +1765,7 @@ static inline MagickBooleanType CopyPixel(const Image *image,
     }
   for (i=0; i < (ssize_t) GetPixelChannels(image); i++)
   {
-    PixelChannel channel=GetPixelChannelChannel(image,i);
+    PixelChannel channel = GetPixelChannelChannel(image,i);
     destination[channel]=source[i];
   }
   return(MagickTrue);
@@ -2069,6 +2070,42 @@ MagickPrivate ColorspaceType GetPixelCacheColorspace(const Cache cache)
 %                                                                             %
 %                                                                             %
 %                                                                             %
++   G e t P i x e l C a c h e F i l e n a m e                                 %
+%                                                                             %
+%                                                                             %
+%                                                                             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  GetPixelCacheFilename() returns the filename associated with the pixel
+%  cache.
+%
+%  The format of the GetPixelCacheFilename() method is:
+%
+%      const char *GetPixelCacheFilename(const Image *image)
+%
+%  A description of each parameter follows:
+%
+%    o image: the image.
+%
+*/
+MagickExport const char *GetPixelCacheFilename(const Image *image)
+{
+  CacheInfo
+    *magick_restrict cache_info;
+
+  assert(image != (const Image *) NULL);
+  assert(image->signature == MagickCoreSignature);
+  assert(image->cache != (Cache) NULL);
+  cache_info=(CacheInfo *) image->cache;
+  assert(cache_info->signature == MagickCoreSignature);
+  return(cache_info->cache_filename);
+}
+
+/*
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                                             %
+%                                                                             %
+%                                                                             %
 +   G e t P i x e l C a c h e M e t h o d s                                   %
 %                                                                             %
 %                                                                             %
@@ -2176,7 +2213,7 @@ MagickPrivate MagickSizeType GetPixelCacheNexusExtent(const Cache cache,
 %    o exception: return any errors or warnings in this structure.
 %
 */
-MagickPrivate void *GetPixelCachePixels(Image *image,MagickSizeType *length,
+MagickExport void *GetPixelCachePixels(Image *image,MagickSizeType *length,
   ExceptionInfo *exception)
 {
   CacheInfo
@@ -2190,10 +2227,9 @@ MagickPrivate void *GetPixelCachePixels(Image *image,MagickSizeType *length,
   assert(exception->signature == MagickCoreSignature);
   cache_info=(CacheInfo *) image->cache;
   assert(cache_info->signature == MagickCoreSignature);
-  *length=0;
+  *length=cache_info->length;
   if ((cache_info->type != MemoryCache) && (cache_info->type != MapCache))
     return((void *) NULL);
-  *length=cache_info->length;
   return((void *) cache_info->pixels);
 }
 
@@ -2257,9 +2293,9 @@ MagickPrivate ClassType GetPixelCacheStorageClass(const Cache cache)
 %
 %    o image: the image.
 %
-%    o width: the optimize cache tile width in pixels.
+%    o width: the optimized cache tile width in pixels.
 %
-%    o height: the optimize cache tile height in pixels.
+%    o height: the optimized cache tile height in pixels.
 %
 */
 MagickPrivate void GetPixelCacheTileSize(const Image *image,size_t *width,
@@ -3508,6 +3544,8 @@ static MagickBooleanType OpenPixelCache(Image *image,const MapMode mode,
       return(MagickTrue);
     }
   status=AcquireMagickResource(AreaResource,cache_info->length);
+  if (cache_info->mode == PersistMode)
+    status=MagickFalse;
   length=number_pixels*(cache_info->number_channels*sizeof(Quantum)+
     cache_info->metacontent_extent);
   if ((status != MagickFalse) && (length == (MagickSizeType) ((size_t) length)))
@@ -3633,7 +3671,8 @@ static MagickBooleanType OpenPixelCache(Image *image,const MapMode mode,
         "CacheResourcesExhausted","`%s'",image->filename);
       return(MagickFalse);
     }
-  if ((source_info.storage_class != UndefinedClass) && (mode != ReadMode))
+  if ((source_info.storage_class != UndefinedClass) && (mode != ReadMode) &&
+      (cache_info->mode != PersistMode))
     {
       (void) ClosePixelCacheOnDisk(cache_info);
       *cache_info->cache_filename='\0';
@@ -3782,9 +3821,6 @@ MagickExport MagickBooleanType PersistPixelCache(Image *image,
     *magick_restrict cache_info,
     *magick_restrict clone_info;
 
-  Image
-    clone_image;
-
   MagickBooleanType
     status;
 
@@ -3824,17 +3860,25 @@ MagickExport MagickBooleanType PersistPixelCache(Image *image,
   /*
     Clone persistent pixel cache.
   */
-  clone_image=(*image);
-  clone_info=(CacheInfo *) clone_image.cache;
-  image->cache=ClonePixelCache(cache_info);
-  cache_info=(CacheInfo *) ReferencePixelCache(image->cache);
-  (void) CopyMagickString(cache_info->cache_filename,filename,MagickPathExtent);
-  cache_info->type=DiskCache;
-  cache_info->offset=(*offset);
-  cache_info=(CacheInfo *) image->cache;
-  status=OpenPixelCache(image,IOMode,exception);
-  if (status != MagickFalse)
-    status=ClonePixelCacheRepository(cache_info,clone_info,exception);
+  clone_info=(CacheInfo *) ClonePixelCache(cache_info);
+  clone_info->type=DiskCache;
+  (void) CopyMagickString(clone_info->cache_filename,filename,MagickPathExtent);
+  clone_info->file=(-1);
+  clone_info->storage_class=cache_info->storage_class;
+  clone_info->colorspace=cache_info->colorspace;
+  clone_info->alpha_trait=cache_info->alpha_trait;
+  clone_info->read_mask=cache_info->read_mask;
+  clone_info->write_mask=cache_info->write_mask;
+  clone_info->rows=cache_info->rows;
+  clone_info->columns=cache_info->columns;
+  clone_info->number_channels=cache_info->number_channels;
+  clone_info->metacontent_extent=cache_info->metacontent_extent;
+  clone_info->mode=PersistMode;
+  clone_info->length=cache_info->length;
+  (void) memcpy(clone_info->channel_map,cache_info->channel_map,
+    MaxPixelChannels*sizeof(*cache_info->channel_map));
+  clone_info->offset=(*offset);
+  status=ClonePixelCacheRepository(clone_info,cache_info,exception);
   *offset+=cache_info->length+page_size-(cache_info->length % page_size);
   clone_info=(CacheInfo *) DestroyPixelCache(clone_info);
   return(status);

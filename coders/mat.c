@@ -632,7 +632,35 @@ static Image *ReadMATImageV4(const ImageInfo *image_info,Image *image,
 
   quantum_info=(QuantumInfo *) NULL;
   (void) SeekBlob(image,0,SEEK_SET);
-  while (EOFBlob(image) != MagickFalse)
+  ldblk=ReadBlobLSBLong(image);
+  if(EOFBlob(image)) return((Image *) NULL);
+  if ((ldblk > 9999) || (ldblk < 0))
+    return((Image *) NULL);
+  HDR.Type[3]=ldblk % 10; ldblk /= 10;  /* T digit */
+  HDR.Type[2]=ldblk % 10; ldblk /= 10;  /* P digit */
+  HDR.Type[1]=ldblk % 10; ldblk /= 10;  /* O digit */
+  HDR.Type[0]=ldblk;        /* M digit */
+  if (HDR.Type[3] != 0) return((Image *) NULL);    /* Data format */
+  if (HDR.Type[2] != 0) return((Image *) NULL);    /* Always 0 */
+  if (HDR.Type[0] == 0)
+    {
+      HDR.nRows=ReadBlobLSBLong(image);
+      HDR.nCols=ReadBlobLSBLong(image);
+      HDR.imagf=ReadBlobLSBLong(image);
+      HDR.nameLen=ReadBlobLSBLong(image);
+      endian=LSBEndian;
+    }
+  else
+    {
+      HDR.nRows=ReadBlobMSBLong(image);
+      HDR.nCols=ReadBlobMSBLong(image);
+      HDR.imagf=ReadBlobMSBLong(image);
+      HDR.nameLen=ReadBlobMSBLong(image);
+      endian=MSBEndian;
+    }
+  if (HDR.nameLen > 0xFFFF)
+    return((Image *) NULL);
+  for (i=0; i < (ssize_t) HDR.nameLen; i++)
   {
     /*
      Object parser loop.
@@ -944,17 +972,19 @@ MATLAB_KO:
     }
 
   filepos = TellBlob(image);
-  while(!EOFBlob(image)) /* object parser loop */
+  while(filepos < GetBlobSize(image) && !EOFBlob(image)) /* object parser loop */
   {
     Frames = 1;
     (void) SeekBlob(image,filepos,SEEK_SET);
+    if(filepos > GetBlobSize(image) || filepos < 0)
+      break;
     /* printf("pos=%X\n",TellBlob(image)); */
 
     MATLAB_HDR.DataType = ReadBlobXXXLong(image);
     if(EOFBlob(image)) break;
     MATLAB_HDR.ObjectSize = ReadBlobXXXLong(image);
     if(EOFBlob(image)) break;
-    if((MagickSizeType) (MATLAB_HDR.ObjectSize+filepos) > GetBlobSize(image))
+    if((MagickSizeType) (MATLAB_HDR.ObjectSize+filepos) >= GetBlobSize(image))
       goto MATLAB_KO;
     filepos += MATLAB_HDR.ObjectSize + 4 + 4;
 
@@ -1185,6 +1215,7 @@ RestoreMSCWarning
   {
     if (logging) (void)LogMagickEvent(CoderEvent,GetMagickModule(),
              "  MAT cannot read scanrow %u from a file.", (unsigned)(MATLAB_HDR.SizeY-i-1));
+    ThrowReaderException(CorruptImageError,"UnexpectedEndOfFile");
     goto ExitLoop;
   }
         if((CellType==miINT8 || CellType==miUINT8) && (MATLAB_HDR.StructureFlag & FLAG_LOGICAL))
